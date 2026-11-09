@@ -41,6 +41,7 @@ const ICO = {
   relogio: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/>',
   grafico: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
   bandeira: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
+  filtro: '<path d="M4 6h16M7 12h10M10 18h4"/>',
 };
 
 export async function iniciarApp(root, user) {
@@ -113,7 +114,7 @@ export async function iniciarApp(root, user) {
     return el("header", {},
       el("h2", {}, `Questão ${q.num}`),
       rev(q) ? el("span", { class: "etq-fonte" }, el("img", { src: "/revisai/revisai.png", alt: "revisaí" }), NOME_LISTA[q.f]) : null,
-      pos ? el("span", { class: "pos" }, pos) : null,
+      pos ? (typeof pos === "string" ? el("span", { class: "pos" }, pos) : pos) : null,
       el("div", { class: "etqs" },
         el("span", { class: "etq-area", style: `background:${FUNDO[q.a]};color:${COR[q.a]}` }, el("i", { class: "ponto", style: `background:${COR[q.a]}` }), q.a),
         el("span", { class: "etq", title: q.sub ? q.t : null }, q.sub || q.t),
@@ -165,7 +166,7 @@ export async function iniciarApp(root, user) {
     el("button", { class: "fechar", "aria-label": "Fechar", on: fecharPainel }, svg(ICO.x)));
   function desenharPainel() {
     if (!painelAberto) return;
-    const conteudo = { grade: painelGrade, desempenho: painelDesempenho, simulado: painelSimulado, cartao: painelCartao }[painelAberto]();
+    const conteudo = { grade: painelGrade, desempenho: painelDesempenho, simulado: painelSimulado, cartao: painelCartao, filtros: painelFiltros }[painelAberto]();
     trocar($painel, ...conteudo);
   }
 
@@ -223,37 +224,63 @@ export async function iniciarApp(root, user) {
   }
 
   function painelSimulado() {
+    const lista = st.simEscolhido || "revisai-1";
     if (sim) {
-      return [cabecaPainel("Simulado em andamento"),
+      const mesmo = sim.lista === lista;
+      return [cabecaPainel(mesmo ? `${NOME_LISTA[lista]} em andamento` : "Você já tem um simulado aberto"),
         el("div", { class: "sim-card ativo" },
           el("b", {}, `${NOME_LISTA[sim.lista]} do revisaí`),
           el("p", {}, `${Object.keys(sim.resp).length} de 90 respondidas · restam ${horas(restante())}`),
-          el("button", { class: "botao cheio largo", on: () => { fecharPainel(); entrarSimulado(); } }, "Continuar simulado")),
+          el("button", { class: "botao cheio largo", on: () => { fecharPainel(); entrarSimulado(); } }, `Continuar o ${NOME_LISTA[sim.lista]}`)),
+        mesmo ? null : el("p", { class: "painel-resumo" }, `Para começar o ${NOME_LISTA[lista]}, entregue ou desista do que está aberto.`),
         el("button", { class: "link perigo", on: desistir }, "Desistir deste simulado (as respostas dele são descartadas)")];
     }
-    const cartaoSim = (lista) => {
-      const qs = Q.filter((q) => q.f === lista), p = placar(qs);
-      return el("button", { class: "sim-card", on: () => iniciarSimulado(lista) },
-        el("b", {}, NOME_LISTA[lista]),
-        el("span", {}, lista === "revisai-1" ? "Nível ENEM, com itens do ENEM 2024 e da OBMEP" : "Nível difícil, com itens do ENEM 2021–2025"),
-        el("small", {}, `Você já fez ${p.ok + p.erro} destas 90 no treino`),
-        el("span", { class: "sim-ir" }, "Começar", svg(ICO.dir, 16)));
-    };
-    return [cabecaPainel("Fazer simulado"),
+    const qs = Q.filter((q) => q.f === lista), p = placar(qs);
+    return [cabecaPainel(`${NOME_LISTA[lista]} do revisaí`),
+      el("p", { class: "painel-resumo" }, lista === "revisai-1" ? "Nível ENEM, com itens do ENEM 2024 e da OBMEP." : "Nível difícil, com itens do ENEM 2021–2025 e da OBMEP.",
+        ` Você já fez ${p.ok + p.erro} destas 90 no treino.`),
       el("ul", { class: "sim-regras" },
         el("li", {}, el("b", {}, "90 questões"), ": 45 de Natureza e 45 de Matemática, na ordem da prova"),
         el("li", {}, el("b", {}, "5 horas"), " de cronômetro, como no 2º dia. O tempo continua correndo se você sair"),
         el("li", {}, el("b", {}, "Gabarito só no final"), ". Dá para trocar a resposta e marcar questões para revisar"),
         el("li", {}, "Ao entregar, as respostas entram no seu desempenho (substituem as do treino nessas questões)")),
-      cartaoSim("revisai-1"), cartaoSim("revisai-2")];
+      el("button", { class: "botao cheio largo grande", on: () => iniciarSimulado(lista) }, svg(ICO.relogio, 18), "Começar agora")];
+  }
+
+  function painelFiltros() {
+    const pilula = (on, rot, acao, cor) => el("button", { class: "pilula" + (on ? " on" : ""), on: acao },
+      cor ? el("i", { class: "ponto", style: `background:${cor}` }) : null, rot);
+    const base = Q.filter((q) => naAba(q) && (st.area === "Todas" || q.a === st.area));
+    const item = (rot, topico, qs) => { const p = placar(qs); return el("button", {
+      class: "topico" + (st.topico === topico ? " on" : ""), on: () => { mudar(() => { st.topico = topico; }); fecharPainel(); },
+    }, el("span", {}, rot), el("span", { class: "n" }, `${p.ok + p.erro}/${p.tot}`), barra(p)); };
+    const itens = [item("Todos os assuntos", null, base)];
+    for (const a of AREAS.slice(1)) {
+      if (st.area !== "Todas" && st.area !== a) continue;
+      const nomes = [...new Set(base.filter((q) => q.a === a).map((q) => q.t))].sort((x, y) => x.localeCompare(y));
+      if (!nomes.length) continue;
+      if (st.area === "Todas") itens.push(el("div", { class: "grupo" }, el("i", { class: "ponto", style: `background:${COR[a]}` }), a));
+      nomes.forEach((nm) => itens.push(item(nm, nm, base.filter((q) => q.t === nm))));
+    }
+    const secao = (titulo, ...corpo) => el("section", { class: "filtro-secao" }, el("h4", {}, titulo), ...corpo);
+    return [cabecaPainel("Filtros"),
+      st.aba === "revisai" ? secao("Lista", el("div", { class: "pilulas" },
+        LISTAS.map(([k, r]) => pilula(st.lista === k, r, () => mudar(() => { st.lista = k; st.topico = null; }))))) : null,
+      secao("Área", el("div", { class: "pilulas" },
+        AREAS.map((a) => pilula(st.area === a, a === "Todas" ? "Todas" : a, () => mudar(() => { st.area = a; st.topico = null; }), COR[a])))),
+      secao("Mostrar", el("div", { class: "pilulas" },
+        MODOS.map(([k, r]) => pilula(st.modo === k, r, () => mudar(() => { st.modo = k; }))))),
+      secao("Assunto", el("div", { class: "topicos" }, itens)),
+      el("div", { class: "painel-acoes" },
+        el("button", { class: "botao cheio", on: fecharPainel }, `Ver ${lista().length} questões`),
+        el("button", { class: "botao pequeno", on: () => mudar(() => { st.area = "Todas"; st.topico = null; st.modo = "todas"; st.lista = "todas"; }) }, "Limpar filtros"))];
   }
 
   // ---------- tela de treino ----------
   const $abas = el("nav", { class: "abas-topo", "aria-label": "Listas" });
   const $desemp = el("button", { class: "botao-topo desemp", on: () => abrirPainel("desempenho") });
   const $progBarra = el("div", { class: "prog-barra" });
-  const $filtros = el("div", { class: "filtros" });
-  const $acoesBarra = el("div", { class: "barra-dir" });
+  const $linhaFiltro = el("div", { class: "linha-filtro" });
   const $faixa = el("div");
   const $main = el("main", { class: "questao-col" });
 
@@ -265,8 +292,7 @@ export async function iniciarApp(root, user) {
         el("div", { class: "topo-dir" }, $desemp,
           el("button", { class: "botao-topo so-pc", on: () => sb.auth.signOut() }, "Sair"))),
         $progBarra),
-      el("div", { class: "barra-filtros" }, el("div", { class: "miolo barra-in" }, $filtros, $acoesBarra)),
-      el("div", { class: "pagina" }, $faixa, $main),
+      el("div", { class: "pagina" }, $faixa, $linhaFiltro, $main),
       $fundo, $painel,
       el("footer", { class: "rodape" }, el("div", { class: "miolo" },
         el("span", {}, "apostas · uso pessoal para estudo · questões do revisaí em parceria com ",
@@ -292,36 +318,31 @@ export async function iniciarApp(root, user) {
   }
 
   function desenharBarra() {
-    const seletor = (rotulo, valor, opcoes, aoMudar) => el("label", { class: "seletor" },
-      el("span", { class: "seletor-rot" }, rotulo),
-      el("select", { onchange: (e) => aoMudar(e.target.value) }, opcoes.map((o) => o.grupo
-        ? el("optgroup", { label: o.grupo }, o.itens.map((i) => el("option", { value: i.v, selected: i.v === valor }, i.r)))
-        : el("option", { value: o.v, selected: o.v === valor }, o.r))));
-    const base = Q.filter((q) => naAba(q) && (st.area === "Todas" || q.a === st.area));
-    const opTopico = (t) => { const qs = base.filter((q) => q.t === t), p = placar(qs); return { v: t, r: `${t} (${p.ok + p.erro}/${qs.length})` }; };
-    const topicosDa = (a) => [...new Set(base.filter((q) => q.a === a).map((q) => q.t))].sort((x, y) => x.localeCompare(y)).map(opTopico);
-    const opsTopico = [{ v: "", r: "Todos os assuntos" }, ...(st.area === "Todas"
-      ? AREAS.slice(1).map((a) => ({ grupo: a, itens: topicosDa(a) })).filter((g) => g.itens.length)
-      : topicosDa(st.area))];
-    trocar($filtros, 
-      st.aba === "revisai" ? seletor("Lista", st.lista, LISTAS.map(([v, r]) => ({ v, r })), (v) => mudar(() => { st.lista = v; st.topico = null; })) : null,
-      seletor("Área", st.area, AREAS.map((a) => ({ v: a, r: a === "Todas" ? "Todas as áreas" : a })), (v) => mudar(() => { st.area = v; st.topico = null; })),
-      seletor("Assunto", st.topico || "", opsTopico, (v) => mudar(() => { st.topico = v || null; })),
-      seletor("Mostrar", st.modo, MODOS.map(([v, r]) => ({ v, r })), (v) => mudar(() => { st.modo = v; })));
-    $filtros.querySelectorAll(".seletor").forEach(($s, i) => {
-      const sel = $s.querySelector("select"); $s.classList.toggle("ativo", sel.selectedIndex > 0 && !(st.aba === "revisai" && i === 0 && st.lista === "todas"));
-    });
-    const L = lista(), pos = L.findIndex((q) => q.n === st.atual);
-    trocar($acoesBarra, 
-      st.aba === "revisai" ? el("button", { class: "botao-sim" + (sim ? " ativo" : ""), on: () => abrirPainel("simulado") },
-        svg(ICO.relogio, 17), sim ? el("span", {}, `Simulado · ${horas(restante())}`)
-          : [el("span", { class: "rot-pc" }, "Fazer simulado"), el("span", { class: "rot-cel" }, "Simulado")]) : null,
-      el("button", { class: "botao-grade", on: () => abrirPainel("grade"), "aria-label": "Ver todas as questões do filtro" },
-        svg(ICO.grade, 17), el("span", {}, L.length ? `${pos + 1}/${L.length}` : "0")));
-    trocar($faixa, st.aba !== "revisai" ? "" : el("div", { class: "faixa-parceria" },
-      el("img", { src: "/revisai/revisai.png", alt: "revisaí" }),
-      el("span", {}, "Simulados 1 e 2 do revisaí, em parceria. A apostila completa (teoria, fichas e autodiagnóstico) é gratuita no perfil deles."),
-      el("a", { href: REVISAI_URL, target: "_blank", rel: "noopener" }, "Ver apostilas", svg(ICO.dir, 14))));
+    // filtros ativos em texto, cada um com × para tirar; o resto fica no painel "Filtros"
+    const ativos = [];
+    const chip = (rot, tirar) => ativos.push(el("button", { class: "chip-filtro", on: tirar, "aria-label": `Tirar filtro ${rot}` }, rot, svg(ICO.x, 13)));
+    if (st.aba === "revisai" && st.lista !== "todas") chip(NOME_LISTA[st.lista], () => mudar(() => { st.lista = "todas"; st.topico = null; }));
+    if (st.area !== "Todas") chip(st.area, () => mudar(() => { st.area = "Todas"; st.topico = null; }));
+    if (st.topico) chip(st.topico, () => mudar(() => { st.topico = null; }));
+    if (st.modo !== "todas") chip(MODOS.find((m) => m[0] === st.modo)[1], () => mudar(() => { st.modo = "todas"; }));
+    trocar($linhaFiltro,
+      el("div", { class: "chips-filtro" }, ativos.length ? ativos
+        : el("span", { class: "sem-filtro" }, st.aba === "revisai" ? "Todas as questões dos Simulados 1 e 2" : "Todas as questões da monitoria")),
+      el("button", { class: "botao-filtros" + (ativos.length ? " com" : ""), on: () => abrirPainel("filtros") },
+        svg(ICO.filtro, 17), "Filtros", ativos.length ? el("span", { class: "conta" }, String(ativos.length)) : null));
+
+    const botaoSim = (lista) => {
+      const aberto = sim && sim.lista === lista;
+      return el("button", { class: "botao-sim" + (aberto ? " ativo" : ""), on: () => { st.simEscolhido = lista; abrirPainel("simulado"); } },
+        svg(ICO.relogio, 18), el("span", { class: "sim-nome" }, NOME_LISTA[lista]),
+        el("small", {}, aberto ? `continuar · ${horas(restante())}` : lista === "revisai-1" ? "nível ENEM · 5h" : "nível difícil · 5h"));
+    };
+    trocar($faixa, st.aba !== "revisai" ? "" : el("section", { class: "bloco-revisai" },
+      el("div", { class: "bloco-txt" },
+        el("img", { src: "/revisai/revisai.png", alt: "revisaí" }),
+        el("span", {}, "Simulados cronometrados, como no 2º dia. Em parceria com o revisaí: a apostila completa é gratuita no ",
+          el("a", { href: REVISAI_URL, target: "_blank", rel: "noopener" }, "perfil deles"), ".")),
+      el("div", { class: "bloco-botoes" }, botaoSim("revisai-1"), botaoSim("revisai-2"))));
   }
 
   function desenharQuestao() {
@@ -365,7 +386,8 @@ export async function iniciarApp(root, user) {
       : el("button", { class: "botao cheio grande", disabled: !st.marcada, on: responderAtual }, st.marcada ? `Responder ${st.marcada}` : "Escolha uma alternativa");
     trocar($main, 
       el("article", { class: "cartao questao" },
-        cabecalhoQuestao(q, `${i + 1} de ${L.length}`), enunciado,
+        cabecalhoQuestao(q, el("button", { class: "pos ver-todas", on: () => abrirPainel("grade"), "aria-label": "Ver todas as questões do filtro" },
+          svg(ICO.grade, 15), `${i + 1} de ${L.length}`)), enunciado,
         el("div", { class: "resposta" }, corpoResposta),
         el("p", { class: "dica so-pc" }, "Teclas A–E marcam · Enter responde · ← → trocam de questão")),
       el("div", { class: "barra-acao" },
