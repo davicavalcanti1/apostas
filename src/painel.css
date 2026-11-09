@@ -5,7 +5,7 @@
 
 /* ---------- topo ---------- */
 .topo { position: sticky; top: 0; z-index: 30; background: var(--marinho); padding-top: env(safe-area-inset-top); }
-.topo-in { display: flex; align-items: center; gap: 18px; padding-top: 10px; padding-bottom: 10px; min-height: 60px; }
+.topo-in { position: relative; display: flex; align-items: center; gap: 18px; padding-top: 10px; padding-bottom: 10px; min-height: 60px; }
 .topo-dir { display: flex; align-items: center; gap: 10px; margin-left: auto; min-width: 0; }
 .botao-topo { border: 1px solid rgba(255, 255, 255, .2); background: transparent; color: #fff; border-radius: 999px; padding: 7px 14px; font-size: 13.5px; font-weight: 600;
   display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
@@ -16,14 +16,13 @@
 .prog-txt em { font-style: normal; color: var(--marinho-muda); }
 .prog-barra .trilho { height: 3px; border-radius: 0; background: rgba(255, 255, 255, .1); }
 
-.abas-topo { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: rgba(255, 255, 255, .08); margin-left: 10px; }
-.aba { display: inline-flex; align-items: center; gap: 9px; height: 36px; padding: 0 14px; border-radius: 9px; border: 0; background: transparent;
-  color: var(--marinho-tinta); font-weight: 700; font-size: 14.5px; }
-.aba:hover { background: rgba(255, 255, 255, .08); }
-.aba.on { background: #fff; color: var(--tinta); }
-.aba-logo { height: 16px; width: auto; display: block; }
-.aba-n { font-size: 11.5px; font-weight: 600; color: var(--marinho-muda); font-variant-numeric: tabular-nums; }
-.aba.on .aba-n { color: var(--tinta-3); }
+.abas-topo { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: grid; grid-template-columns: 1fr 1fr;
+  gap: 4px; padding: 4px; border-radius: 14px; background: rgba(255, 255, 255, .08); width: 320px; }
+.aba { display: flex; align-items: center; justify-content: center; height: 40px; padding: 0 16px; border-radius: 10px; border: 0; background: transparent;
+  color: #fff; font-weight: 700; font-size: 15px; letter-spacing: -.01em; transition: background .15s; }
+.aba:hover { background: rgba(255, 255, 255, .1); }
+.aba.on { background: #fff; color: var(--tinta); box-shadow: 0 1px 3px rgba(0, 0, 0, .2); }
+.aba-logo { height: 18px; width: auto; display: block; }
 
 
 /* ---------- página ---------- */
@@ -45,12 +44,6 @@
   background: var(--cartao); color: var(--tinta); font-weight: 700; font-size: 14px; }
 .botao-filtros:hover { border-color: var(--marinho); }
 .botao-filtros .conta { min-width: 20px; height: 20px; border-radius: 999px; background: var(--coral); color: #fff; font-size: 12px; display: grid; place-items: center; padding: 0 6px; }
-.bloco-revisai { background: var(--cartao); border: var(--borda); box-shadow: var(--sombra); border-radius: var(--raio); padding: 14px 16px; margin-bottom: 14px;
-  border-top: 3px solid #ff6b1a; }
-.bloco-txt { display: flex; align-items: center; gap: 12px; font-size: 13.5px; color: var(--tinta-2); margin-bottom: 12px; }
-.bloco-txt img { height: 20px; width: auto; flex: none; }
-.bloco-txt a { color: #c94a08; font-weight: 700; }
-.bloco-botoes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .botao-sim { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 12px; align-items: center; text-align: left;
   padding: 12px 16px; border-radius: 12px; border: 0; background: #ff6b1a; color: #fff; }
 .botao-sim svg { grid-row: 1 / 3; }
@@ -76,6 +69,30 @@
 .topico .n { font-size: 12px; color: var(--tinta-3); font-variant-numeric: tabular-nums; align-self: center; }
 .topico .trilho { grid-column: 1 / -1; height: 3px; }
 .painel-acoes .botao.cheio { flex: 1; }
+
+/* ---------- revisaí: cards dos simulados ---------- */
+.voltar-sim { display: inline-flex; align-items: center; gap: 4px; flex: none; height: 40px; padding: 0 14px 0 10px; border-radius: 999px; border: 1px solid var(--linha-2);
+  background: var(--cartao); font-weight: 700; font-size: 14px; color: var(--tinta); }
+.voltar-sim:hover { border-color: var(--marinho); }
+.cards-intro { display: flex; align-items: center; gap: 16px; margin: 6px 0 18px; }
+.cards-intro img { height: 30px; width: auto; flex: none; }
+.cards-intro p { margin: 0; flex: 1; font-size: 14.5px; color: var(--tinta-2); }
+.cards-intro a { display: inline-flex; align-items: center; gap: 2px; font-weight: 700; font-size: 14px; color: #c94a08; text-decoration: none; white-space: nowrap; }
+.cards-intro a:hover { text-decoration: underline; }
+.cards-sim { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.card-sim { display: flex; flex-direction: column; gap: 14px; padding: 22px; border-top: 4px solid #ff6b1a; }
+.card-selo { display: inline-block; font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #c94a08; background: #fff3ea;
+  padding: 3px 9px; border-radius: 999px; }
+.card-topo h2 { margin: 10px 0 6px; font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
+.card-topo p { margin: 0; font-size: 14.5px; color: var(--tinta-2); min-height: 4.5em; }
+.card-nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.card-nums div { background: var(--papel); border-radius: 10px; padding: 10px 8px; text-align: center; }
+.card-nums b { display: block; font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.card-nums span { font-size: 11.5px; color: var(--tinta-3); }
+.card-acoes { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
+.card-acoes .botao-sim { width: 100%; }
+.card-treino { width: 100%; padding: 12px 16px; border-color: var(--linha-2); color: var(--tinta); }
+.card-pdf { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 0 0; color: var(--petroleo); }
 
 /* ---------- questão ---------- */
 .questao-col { min-width: 0; }
@@ -250,15 +267,19 @@ button.sim-card:hover { border-color: #ff6b1a; box-shadow: var(--sombra); }
   .so-pc { display: none !important; }
   .topo-in { flex-wrap: wrap; gap: 8px 10px; min-height: 0; padding-top: 10px; padding-bottom: 8px; }
   .marca img { height: 22px; } .marca .nome { font-size: 17px; } .marca { gap: 9px; } .marca .barra { height: 18px; }
-  .abas-topo { order: 3; flex-basis: 100%; margin: 0; }
-  .aba { flex: 1; justify-content: center; }
   .rodape { display: none; }
 
   .pagina { padding: 10px 0 0; }
+  .topo-in { flex-wrap: wrap; }
+  .abas-topo { position: static; transform: none; order: 3; width: 100%; }
+  .cards-intro { margin: 4px 12px 14px; flex-wrap: wrap; gap: 8px 12px; }
+  .cards-intro img { height: 24px; }
+  .cards-intro p { flex-basis: 100%; order: 3; font-size: 13.5px; }
+  .cards-sim { grid-template-columns: 1fr; gap: 12px; margin: 0 12px; }
+  .card-sim { padding: 18px 16px; }
+  .card-topo p { min-height: 0; }
   .linha-filtro { margin: 0 12px 10px; }
-  .bloco-revisai { margin: 0 12px 10px; padding: 12px; }
-  .bloco-txt { font-size: 12.5px; align-items: flex-start; }
-  .botao-sim { padding: 11px 12px; column-gap: 9px; }
+      .botao-sim { padding: 11px 12px; column-gap: 9px; }
   .botao-sim .sim-nome { font-size: 15px; }
   .botao-sim small { font-size: 11.5px; }
   .pos.ver-todas { margin-left: auto; }

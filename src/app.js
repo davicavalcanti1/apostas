@@ -42,6 +42,8 @@ const ICO = {
   grafico: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
   bandeira: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
   filtro: '<path d="M4 6h16M7 12h10M10 18h4"/>',
+  baixar: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+  livro: '<path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2V5z"/><path d="M4 19a2 2 0 012-2h13"/>',
 };
 
 export async function iniciarApp(root, user) {
@@ -71,7 +73,7 @@ export async function iniciarApp(root, user) {
   // alternativas clicáveis só quando todas as imagens recortadas existem; senão, volta ao modo antigo
   const separadas = (n) => !!img("e", n) && "ABCDE".split("").every((L) => img("a", n, L));
 
-  const st = { aba: guardado("apostas.aba") === "revisai" ? "revisai" : "apostas", lista: "todas",
+  const st = { aba: guardado("apostas.aba") === "revisai" ? "revisai" : "apostas", lista: "todas", revTela: "cards",
     area: "Todas", topico: null, modo: "todas", atual: null, marcada: null };
   const nome = user.user_metadata?.nome || user.email;
   const CHAVE_SIM = `apostas.simulado.${user.id}`, CHAVE_HIST = `apostas.simulados.${user.id}`;
@@ -89,6 +91,7 @@ export async function iniciarApp(root, user) {
   const barra = (s) => el("div", { class: "trilho" },
     el("i", { style: `width:${(100 * s.ok) / (s.tot || 1)}%;background:var(--certo)` }),
     el("i", { style: `width:${(100 * s.erro) / (s.tot || 1)}%;background:var(--errado)` }));
+  const emCards = () => tela === "treino" && st.aba === "revisai" && st.revTela !== "questoes";
   const mudar = (fn) => { fn(); st.atual = null; st.marcada = null; desenhar(); };
   const restante = () => (sim ? sim.inicio + DURACAO - Date.now() : 0);
   const salvarSim = () => guardado(CHAVE_SIM, sim ? JSON.stringify(sim) : null);
@@ -201,7 +204,7 @@ export async function iniciarApp(root, user) {
         linha("Toda a área", daArea),
         ...topicos.map((t) => linha(t, daArea.filter((q) => q.t === t), () => {
           fecharPainel();
-          mudar(() => { st.area = a; st.topico = Q.some((q) => naAba(q) && q.t === t) ? t : null; st.modo = "todas"; });
+          mudar(() => { st.area = a; st.topico = Q.some((q) => naAba(q) && q.t === t) ? t : null; st.modo = "todas"; st.revTela = "questoes"; });
         })));
     });
     const hist = lerJSON(CHAVE_HIST, []);
@@ -302,14 +305,17 @@ export async function iniciarApp(root, user) {
   }
 
   function desenharTopo() {
-    const conta = (f) => { const qs = Q.filter(f), s = placar(qs); return `${s.ok + s.erro}/${qs.length}`; };
-    const aba = (k, conteudo, filtro) => el("button", {
+    const aba = (k, conteudo) => el("button", {
       class: "aba" + (st.aba === k ? " on" : ""), "aria-pressed": String(st.aba === k),
-      on: () => { if (st.aba !== k) { guardado("apostas.aba", k); mudar(() => { st.aba = k; st.topico = null; }); } },
-    }, conteudo, el("span", { class: "aba-n" }, conta(filtro)));
-    trocar($abas, 
-      aba("apostas", el("span", {}, "Monitoria"), (q) => !rev(q)),
-      aba("revisai", el("img", { src: st.aba === "revisai" ? "/revisai/revisai.png" : "/revisai/revisai-branco.png", alt: "revisaí", class: "aba-logo" }), rev));
+      on: () => {
+        if (st.aba === k && (k === "apostas" || st.revTela === "cards")) return;
+        guardado("apostas.aba", k); fecharPainel();
+        mudar(() => { st.aba = k; st.topico = null; st.revTela = "cards"; }); window.scrollTo({ top: 0 });
+      },
+    }, conteudo);
+    trocar($abas,
+      aba("apostas", el("span", { class: "aba-nome" }, "Monitoria")),
+      aba("revisai", el("img", { src: st.aba === "revisai" ? "/revisai/revisai.png" : "/revisai/revisai-branco.png", alt: "revisaí", class: "aba-logo" })));
     const s = placar(Q), feitas = s.ok + s.erro, pct = feitas ? Math.round((100 * s.ok) / feitas) : null;
     trocar($desemp, svg(ICO.grafico, 16), el("span", { class: "prog-txt" }, el("b", {}, String(feitas)), `/${s.tot}`,
       pct != null ? el("em", {}, ` · ${pct}%`) : null));
@@ -331,21 +337,57 @@ export async function iniciarApp(root, user) {
       el("button", { class: "botao-filtros" + (ativos.length ? " com" : ""), on: () => abrirPainel("filtros") },
         svg(ICO.filtro, 17), "Filtros", ativos.length ? el("span", { class: "conta" }, String(ativos.length)) : null));
 
-    const botaoSim = (lista) => {
+    if (st.aba === "revisai") $linhaFiltro.prepend(el("button", { class: "voltar-sim", on: () => mudar(() => { st.revTela = "cards"; }) },
+      svg(ICO.esq, 16), "Simulados"));
+    $linhaFiltro.hidden = emCards();
+    trocar($faixa);
+  }
+
+  async function baixarPdf(lista) {
+    const num = lista === "revisai-1" ? 1 : 2;
+    const { data, error } = await sb.storage.from("revisai-pdf")
+      .createSignedUrl(`revisai-simulado-${num}.pdf`, 600, { download: `revisai - ${num === 1 ? "Apostila e Simulado 1" : "Simulado 2"} - 2o dia.pdf` });
+    if (error || !data?.signedUrl) return alert("O PDF ainda não está disponível. Tente de novo mais tarde.");
+    location.href = data.signedUrl;
+  }
+
+  function desenharCards() {
+    const hist = lerJSON(CHAVE_HIST, []);
+    const card = (lista) => {
+      const qs = Q.filter((q) => q.f === lista), p = placar(qs), feitas = p.ok + p.erro;
+      const ultimo = [...hist].reverse().find((h) => h.lista === lista);
       const aberto = sim && sim.lista === lista;
-      return el("button", { class: "botao-sim" + (aberto ? " ativo" : ""), on: () => { st.simEscolhido = lista; abrirPainel("simulado"); } },
-        svg(ICO.relogio, 18), el("span", { class: "sim-nome" }, NOME_LISTA[lista]),
-        el("small", {}, aberto ? `continuar · ${horas(restante())}` : lista === "revisai-1" ? "nível ENEM · 5h" : "nível difícil · 5h"));
+      const um = lista === "revisai-1";
+      return el("article", { class: "cartao card-sim" },
+        el("div", { class: "card-topo" },
+          el("span", { class: "card-selo" }, um ? "Nível ENEM" : "Nível difícil"),
+          el("h2", {}, NOME_LISTA[lista]),
+          el("p", {}, um ? "90 questões no formato do ENEM, com itens adaptados do ENEM 2024 e da OBMEP. A apostila traz também a teoria e as fichas de revisão."
+            : "90 questões das que mais separam as notas, com itens do ENEM 2021 a 2025 e desafios da OBMEP. Para fazer depois da revisão.")),
+        el("div", { class: "card-nums" },
+          el("div", {}, el("b", {}, `${feitas}/90`), el("span", {}, "feitas no treino")),
+          el("div", {}, el("b", {}, feitas ? `${Math.round((100 * p.ok) / feitas)}%` : "–"), el("span", {}, "de acerto")),
+          el("div", {}, el("b", {}, ultimo ? `${ultimo.acertos}/90` : "–"), el("span", {}, ultimo ? "último simulado" : "simulado não feito"))),
+        barra(p),
+        el("div", { class: "card-acoes" },
+          el("button", { class: "botao-sim" + (aberto ? " ativo" : ""), on: () => { st.simEscolhido = lista; abrirPainel("simulado"); } },
+            svg(ICO.relogio, 18), el("span", { class: "sim-nome" }, aberto ? "Continuar simulado" : "Fazer simulado"),
+            el("small", {}, aberto ? `restam ${horas(restante())}` : "90 questões · 5h de prova")),
+          el("button", { class: "botao card-treino", on: () => mudar(() => { st.lista = lista; st.area = "Todas"; st.topico = null; st.modo = "todas"; st.revTela = "questoes"; }) },
+            svg(ICO.livro, 17), "Treinar questão por questão"),
+          el("button", { class: "link card-pdf", on: () => baixarPdf(lista) }, svg(ICO.baixar, 16),
+            um ? "Baixar a apostila + Simulado 1 (PDF)" : "Baixar o Simulado 2 (PDF)")));
     };
-    trocar($faixa, st.aba !== "revisai" ? "" : el("section", { class: "bloco-revisai" },
-      el("div", { class: "bloco-txt" },
+    trocar($main,
+      el("section", { class: "cards-intro" },
         el("img", { src: "/revisai/revisai.png", alt: "revisaí" }),
-        el("span", {}, "Simulados cronometrados, como no 2º dia. Em parceria com o revisaí: a apostila completa é gratuita no ",
-          el("a", { href: REVISAI_URL, target: "_blank", rel: "noopener" }, "perfil deles"), ".")),
-      el("div", { class: "bloco-botoes" }, botaoSim("revisai-1"), botaoSim("revisai-2"))));
+        el("p", {}, "Os dois simulados do 2º dia do revisaí, em parceria. Faça cronometrado como na prova ou treine questão por questão com gabarito comentado. Os acertos somam no seu desempenho."),
+        el("a", { href: REVISAI_URL, target: "_blank", rel: "noopener" }, "@revisai.enem", svg(ICO.dir, 14))),
+      el("div", { class: "cards-sim" }, card("revisai-1"), card("revisai-2")));
   }
 
   function desenharQuestao() {
+    if (emCards()) return desenharCards();
     const L = lista();
     if (!L.length) {
       const [t, s] = st.modo === "erradas" ? ["Nenhuma questão errada aqui", "Continue assim."]
@@ -536,6 +578,7 @@ export async function iniciarApp(root, user) {
       return el("div", { class: "res-linha" }, el("span", {}, rot), el("div", { class: "trilho" },
         el("i", { style: `width:${(100 * ok) / qs.length}%;background:var(--certo)` })), el("b", {}, `${ok}/${qs.length}`)); };
     const revisar = (modo) => {
+      st.revTela = "questoes";
       st.aba = "revisai"; guardado("apostas.aba", "revisai"); st.lista = feito.lista; st.area = "Todas"; st.topico = null; st.modo = modo; st.atual = null;
       montarTreino();
     };
@@ -563,7 +606,7 @@ export async function iniciarApp(root, user) {
     if (e.key === "Escape") return fecharPainel();
     if (painelAberto) return;
     const k = e.key.toUpperCase();
-    if (tela === "treino") {
+    if (tela === "treino" && !emCards()) {
       if (k.length === 1 && "ABCDE".includes(k) && !resp[st.atual]) { st.marcada = k; desenharQuestao(); }
       else if (e.key === "Enter") { if (resp[st.atual]) vizinha(1); else responderAtual(); }
       else if (e.key === "ArrowRight") vizinha(1);
@@ -585,7 +628,7 @@ export async function iniciarApp(root, user) {
     const dx = e.changedTouches[0].clientX - toque.x, dy = e.changedTouches[0].clientY - toque.y;
     if (Math.abs(dx) > 70 && Math.abs(dy) < 45 && Date.now() - toque.t < 600) {
       const passo = dx < 0 ? 1 : -1;
-      if (tela === "treino") vizinha(passo);
+      if (tela === "treino" && !emCards()) vizinha(passo);
       else if (tela === "simulado" && sim) { const L = simQs(), i = L.findIndex((q) => q.n === sim.atual); if (L[i + passo]) irSim(L[i + passo].n); }
     }
     toque = null;
