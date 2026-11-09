@@ -1,0 +1,47 @@
+/* Painel de usuários */
+.adm-titulo { color: #fff; font-weight: 800; font-size: 17px; padding-left: 14px; border-left: 1.5px solid rgba(255, 255, 255, .22); }
+.adm-pagina { max-width: 1180px; margin: 0 auto; padding: 22px max(16px, env(safe-area-inset-left)) 40px; }
+.adm-resumo { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+.adm-num { padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; }
+.adm-num span { font-size: 13px; color: var(--tinta-3); font-weight: 500; }
+.adm-num b { font-size: 28px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.adm-num small { font-size: 12.5px; color: var(--tinta-3); }
+.adm-controles { display: flex; gap: 10px; margin-bottom: 12px; }
+.adm-busca, .adm-ordem { height: 42px; border: 1px solid var(--linha-2); border-radius: 10px; background: var(--cartao); padding: 0 14px; font-size: 14.5px; }
+.adm-busca { flex: 1; min-width: 0; }
+.adm-busca:focus, .adm-ordem:focus { outline: none; border-color: var(--marinho); }
+.adm-lista { background: var(--cartao); border: var(--borda); box-shadow: var(--sombra); border-radius: var(--raio); overflow: hidden; }
+.adm-linha { display: grid; grid-template-columns: minmax(0, 2.4fr) 1fr .8fr 1.3fr 1.1fr .8fr 110px; gap: 12px; align-items: center; width: 100%;
+  padding: 12px 18px; border: 0; border-top: 1px solid var(--linha); background: none; text-align: left; font-size: 14px; color: var(--tinta); }
+button.adm-linha:hover { background: var(--papel); }
+.adm-cab { border-top: 0; background: var(--papel); font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--tinta-3); padding-top: 10px; padding-bottom: 10px; }
+.adm-pessoa { display: flex; flex-direction: column; min-width: 0; }
+.adm-pessoa b { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adm-pessoa small { color: var(--tinta-3); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adm-n { font-variant-numeric: tabular-nums; color: var(--tinta-2); }
+.adm-n b { color: var(--tinta); font-weight: 800; }
+.adm-n small { color: var(--tinta-3); font-size: 12px; }
+.adm-selo { justify-self: end; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--errado-claro); color: var(--errado); white-space: nowrap; }
+.adm-selo.ok { background: var(--certo-claro); color: var(--certo); }
+.adm-linha.bloqueado .adm-pessoa b { color: var(--tinta-3); }
+.adm-vazio { padding: 28px 18px; color: var(--tinta-3); text-align: center; margin: 0; }
+.adm-vazio.pequeno { padding: 6px 4px; text-align: left; font-size: 13.5px; }
+.adm-sub { margin: 0 0 14px; font-size: 13.5px; color: var(--tinta-2); line-height: 1.6; word-break: break-all; }
+.adm-detalhe .painel-cabeca .fechar { font-size: 22px; line-height: 1; }
+.adm-dias { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; height: 110px; align-items: end; padding: 0 4px 4px; }
+.adm-dia { height: 100%; display: grid; grid-template-rows: 1fr auto auto; justify-items: center; align-items: end; gap: 2px; }
+.adm-dia i { width: 70%; background: var(--petroleo); border-radius: 4px 4px 0 0; align-self: end; }
+.adm-dia b { font-size: 11px; color: var(--tinta-2); min-height: 14px; }
+.adm-dia span { font-size: 11px; color: var(--tinta-3); text-transform: capitalize; }
+.botao.perigo { border-color: #f3c0b8; color: var(--errado); }
+.botao-topo.admin { background: rgba(255, 255, 255, .08); border-color: transparent; }
+
+@media (max-width: 860px) {
+  .adm-titulo { font-size: 15px; padding-left: 10px; }
+  .adm-pagina { padding: 14px 12px 30px; }
+  .adm-resumo { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .adm-num b { font-size: 22px; }
+  .adm-linha { grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 12px; padding: 12px 14px; }
+  .adm-linha > :nth-child(4), .so-pc-adm, .adm-cab { display: none !important; }
+  .adm-selo { grid-column: 1; justify-self: start; }
+}

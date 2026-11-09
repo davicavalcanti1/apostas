@@ -104,3 +104,12 @@ alter table public.bq_questoes
   add column if not exists subtopico text,
   add column if not exists origem text;
 update public.bq_questoes set num = n where num is null and fonte = 'apostas';
+
+-- ---------------------------------------------------------------------------
+-- Bucket dos PDFs do revisaí (09/11/2026): privado, leitura só para quem tem acesso.
+--   revisai-pdf/revisai-simulado-1.pdf e revisai-simulado-2.pdf
+-- Painel de usuários (09/11/2026), aplicado como migration "bq_painel_admin":
+--   bq_admin (e-mails admin), bq_sou_admin(), bq_simulados (resultado de cada simulado entregue),
+--   bq_admin_usuarios(), bq_admin_respostas(uid), bq_admin_simulados(uid), bq_admin_acesso(email, liberar).
+--   Todas as bq_admin_* são security definer e levantam "sem permissão" se quem chama não está em bq_admin.
+-- Adicionar outro admin:  insert into public.bq_admin(email) values ('alguem@exemplo.com');

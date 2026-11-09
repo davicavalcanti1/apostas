@@ -47,10 +47,12 @@ const ICO = {
 };
 
 export async function iniciarApp(root, user) {
-  const [qs, rs] = await Promise.all([
+  const [qs, rs, adm] = await Promise.all([
     sb.from("bq_questoes").select("n,area,topico,gabarito,nota,fonte,num,subtopico,origem").order("n"),
     sb.from("bq_respostas").select("n,resposta"),
+    sb.rpc("bq_sou_admin"),
   ]);
+  const souAdmin = adm.data === true;
   if (qs.error) throw qs.error;
   if (!qs.data.length) return false; // sem acesso liberado (RLS devolve vazio)
 
@@ -292,7 +294,9 @@ export async function iniciarApp(root, user) {
     trocar(root, 
       el("header", { class: "topo" }, el("div", { class: "miolo topo-in" },
         marca(true), $abas,
-        el("div", { class: "topo-dir" }, $desemp,
+        el("div", { class: "topo-dir" },
+          souAdmin ? el("button", { class: "botao-topo admin", on: abrirAdmin }, "Usuários") : null,
+          $desemp,
           el("button", { class: "botao-topo so-pc", on: () => sb.auth.signOut() }, "Sair"))),
         $progBarra),
       el("div", { class: "pagina" }, $faixa, $linhaFiltro, $main),
@@ -302,6 +306,14 @@ export async function iniciarApp(root, user) {
           el("a", { href: REVISAI_URL, target: "_blank", rel: "noopener" }, "@revisai.enem")),
         el("img", { src: "/tintim-negativo.svg", alt: "tintim", height: "22" }))));
     desenhar();
+  }
+
+  // painel de usuários: carregado só para admin (o banco recusa as funções para os outros)
+  let desmontarAdmin = null;
+  async function abrirAdmin() {
+    fecharPainel(); tela = "admin";
+    const { montarAdmin } = await import("./admin.js");
+    desmontarAdmin = await montarAdmin(root, { Q, voltar: () => { desmontarAdmin?.(); desmontarAdmin = null; montarTreino(); } });
   }
 
   function desenharTopo() {
@@ -567,6 +579,9 @@ export async function iniciarApp(root, user) {
     let erroSalvar = null;
     if (linhas.length) { const { error } = await sb.from("bq_respostas").upsert(linhas); erroSalvar = error; }
     const acertos = L.filter((q) => feito.resp[q.n] === q.k).length;
+    // guarda o resultado no banco também (é o que o painel de usuários enxerga)
+    sb.from("bq_simulados").insert({ user_id: user.id, lista: feito.lista, acertos, respondidas: linhas.length, tempo_seg: Math.round(tempo / 1000) })
+      .then(({ error }) => { if (error) console.warn("simulado não salvo no banco:", error.message); });
     const hist = lerJSON(CHAVE_HIST, []); hist.push({ lista: feito.lista, fim: Date.now(), acertos, respondidas: linhas.length, tempo });
     guardado(CHAVE_HIST, JSON.stringify(hist.slice(-20)));
     mostrarResultado(feito, L, acertos, tempo, acabouTempo, erroSalvar);
@@ -640,5 +655,5 @@ export async function iniciarApp(root, user) {
 
   if (sim && restante() <= 0) await entregar(true);
   else montarTreino();
-  return () => { document.removeEventListener("keydown", teclado); clearInterval(tique); fecharPainel(); };
+  return () => { document.removeEventListener("keydown", teclado); clearInterval(tique); fecharPainel(); desmontarAdmin?.(); };
 }
