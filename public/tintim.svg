@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 14 280 96" role="img" aria-label="tintim">
+  <title>tintim</title>
+  <!-- Letreiro monolinear desenhado à mão: t-i-n-t-i-m. Os pingos dos "i" são o destaque (o detalhe). -->
+  <g fill="none" stroke="#0e4a55" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 28 V84 q0 16 16 16"/><path d="M0 50 H24"/>
+    <path d="M44 54 V100"/>
+    <path d="M66 100 V52 M66 74 q0-24 21-24 q21 0 21 24 V100"/>
+    <path d="M132 28 V84 q0 16 16 16"/><path d="M122 50 H146"/>
+    <path d="M166 54 V100"/>
+    <path d="M188 100 V52 M188 72 q0-22 19-22 q19 0 19 22 V100 M226 72 q0-22 19-22 q19 0 19 22 V100"/>
+  </g>
+  <circle cx="44" cy="30" r="8.5" fill="#e4684f"/>
+  <circle cx="166" cy="30" r="8.5" fill="#e4684f"/>
+</svg>

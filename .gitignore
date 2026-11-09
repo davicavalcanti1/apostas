@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+# conteúdo da apostila nunca vai para o repositório (fica no bucket privado)
+*.pdf
+*.webp
