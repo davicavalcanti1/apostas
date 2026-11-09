@@ -92,3 +92,15 @@ begin
 end; $$;
 revoke all on function public.bq_resgatar_convite(text) from public, anon;
 grant execute on function public.bq_resgatar_convite(text) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Aba do revisaí (aplicado em 09/11/2026). As questões dos dois simulados entram na mesma tabela,
+-- então o desempenho geral soma monitoria + revisaí sem mudar bq_respostas.
+--   n 101..190 = Simulado 1, n 201..290 = Simulado 2 (num = número da questão no simulado)
+--   topico usa os mesmos assuntos da monitoria; subtopico é o assunto escrito na apostila do revisaí
+alter table public.bq_questoes
+  add column if not exists fonte text not null default 'apostas' check (fonte in ('apostas','revisai-1','revisai-2')),
+  add column if not exists num int,
+  add column if not exists subtopico text,
+  add column if not exists origem text;
+update public.bq_questoes set num = n where num is null and fonte = 'apostas';

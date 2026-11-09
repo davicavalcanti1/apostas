@@ -6,6 +6,10 @@ const COR = { "Matemática": "var(--mat)", "Física": "var(--fis)", "Química": 
 const FUNDO = { "Matemática": "#eaf1fb", "Física": "#f1edfa", "Química": "#fdeee9", "Biologia": "#e7f5ee" };
 const CURTO = { "Matemática": "Mat", "Física": "Fís", "Química": "Quí", "Biologia": "Bio" };
 const MODOS = [["todas", "Todas"], ["pendentes", "Não feitas"], ["erradas", "Erradas"]];
+const LISTAS = [["todas", "Os dois"], ["revisai-1", "Simulado 1"], ["revisai-2", "Simulado 2"]];
+const NOME_LISTA = { "revisai-1": "Simulado 1", "revisai-2": "Simulado 2" };
+const REVISAI_URL = "https://www.instagram.com/revisai.enem/";
+const guardado = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch { return null; } };
 const pad = (n) => String(n).padStart(2, "0");
 const celular = () => matchMedia("(max-width: 860px)").matches;
 
@@ -24,13 +28,15 @@ const ICO = {
 
 export async function iniciarApp(root, user) {
   const [qs, rs] = await Promise.all([
-    sb.from("bq_questoes").select("n,area,topico,gabarito,nota").order("n"),
+    sb.from("bq_questoes").select("n,area,topico,gabarito,nota,fonte,num,subtopico,origem").order("n"),
     sb.from("bq_respostas").select("n,resposta"),
   ]);
   if (qs.error) throw qs.error;
   if (!qs.data.length) return false; // sem acesso liberado (RLS devolve vazio)
 
-  const Q = qs.data.map((r) => ({ n: r.n, a: r.area, t: r.topico, k: r.gabarito, nota: r.nota }));
+  const Q = qs.data.map((r) => ({ n: r.n, a: r.area, t: r.topico, k: r.gabarito, nota: r.nota,
+    f: r.fonte || "apostas", num: r.num ?? r.n, sub: r.subtopico, origem: r.origem }));
+  const rev = (q) => q.f !== "apostas";
   const porN = Object.fromEntries(Q.map((q) => [q.n, q]));
   let resp = Object.fromEntries((rs.data || []).map((r) => [r.n, r.resposta]));
 
@@ -46,8 +52,11 @@ export async function iniciarApp(root, user) {
   const img = (tipo, n, L = "") => urls[`${tipo}${pad(n)}${L}.webp`];
   // alternativas clicáveis só quando todas as imagens recortadas existem; senão, volta ao modo antigo
   const separadas = (n) => !!img("e", n) && "ABCDE".split("").every((L) => img("a", n, L));
+  // revisaí: recorte a 250 dpi de uma coluna estreita; 0,55 deixa a letra do tamanho da apostila da monitoria
+  const escala = (q) => (rev(q) ? Math.min(0.55, ($main.clientWidth - 40) / 875) : 0.69);
 
-  const st = { area: "Todas", topico: null, modo: "todas", atual: null, marcada: null };
+  const st = { aba: guardado("apostas.aba") === "revisai" ? "revisai" : "apostas", lista: "todas",
+    area: "Todas", topico: null, modo: "todas", atual: null, marcada: null };
   const nome = user.user_metadata?.nome || user.email;
 
   // ---------- esqueleto ----------
@@ -59,6 +68,9 @@ export async function iniciarApp(root, user) {
   const $modos = el("div", { class: "pilulas" });
   const $grade = el("div", { class: "grade" });
   const $main = el("main", { class: "questao-col" });
+  const $abas = el("nav", { class: "abas", "aria-label": "Listas" });
+  const $parceria = el("div");
+  const $listas = el("div", { class: "pilulas" });
   const $progTxt = el("span", { class: "prog-txt" });
   const $progBarra = el("div", { class: "prog-barra" });
   const caixa = (id, titulo, corpo) => el("section", { class: "cartao lateral", id }, el("h3", { class: "rotulo" }, titulo), corpo);
@@ -77,6 +89,8 @@ export async function iniciarApp(root, user) {
       $progBarra),
     el("div", { class: "miolo pagina" },
       $stats,
+      $abas,
+      $parceria,
       el("div", { class: "layout" },
         el("aside", { "aria-label": "Filtros e progresso" },
           el("div", { class: "folha-cabeca so-cel" },
@@ -84,6 +98,7 @@ export async function iniciarApp(root, user) {
             el("b", {}, "Filtros e progresso"),
             el("button", { class: "fechar", "aria-label": "Fechar", on: fecharFolha }, svg(ICO.x))),
           el("div", { class: "so-cel" }, $statsMini),
+          caixa("c-lista", "Simulado", $listas),
           caixa("c-area", "Área", $areas),
           caixa("c-topico", "Assunto", $topicos),
           caixa("c-modo", "Mostrar", $modos),
@@ -95,12 +110,14 @@ export async function iniciarApp(root, user) {
         el("div", { class: "coluna" }, $chips, $main))),
     el("div", { class: "fundo-folha", on: fecharFolha }),
     el("footer", { class: "rodape" }, el("div", { class: "miolo" },
-      el("span", {}, "apostas · uso pessoal para estudo"),
+      el("span", {}, "apostas · uso pessoal para estudo · questões do revisaí em parceria com ",
+        el("a", { href: REVISAI_URL, target: "_blank", rel: "noopener" }, "@revisai.enem")),
       el("img", { src: "/tintim-negativo.svg", alt: "tintim", height: "22" }))));
 
   // ---------- estado ----------
   const situacao = (q) => (!resp[q.n] ? null : resp[q.n] === q.k ? "ok" : "erro");
-  const noEscopo = (q) => (st.area === "Todas" || q.a === st.area) && (!st.topico || q.t === st.topico);
+  const naAba = (q) => (st.aba === "apostas" ? !rev(q) : rev(q) && (st.lista === "todas" || q.f === st.lista));
+  const noEscopo = (q) => naAba(q) && (st.area === "Todas" || q.a === st.area) && (!st.topico || q.t === st.topico);
   const lista = () => Q.filter((q) => noEscopo(q) &&
     (st.modo === "todas" || (st.modo === "pendentes" ? !resp[q.n] : situacao(q) === "erro")));
   const placar = (qs) => { let ok = 0, erro = 0; qs.forEach((q) => { const s = situacao(q); if (s === "ok") ok++; else if (s === "erro") erro++; }); return { ok, erro, tot: qs.length }; };
@@ -118,7 +135,7 @@ export async function iniciarApp(root, user) {
       return el("div", {}, el("span", {}, CURTO[a]), barra(p), el("span", {}, `${p.ok}/${p.tot}`));
     }));
     $stats.replaceChildren(
-      el("div", { class: "cartao stat" }, el("span", {}, "Respondidas"), el("b", {}, String(feitas), el("small", {}, ` / ${s.tot}`))),
+      el("div", { class: "cartao stat" }, el("span", {}, "Respondidas", el("small", { class: "soma" }, " · monitoria + revisaí")), el("b", {}, String(feitas), el("small", {}, ` / ${s.tot}`))),
       el("div", { class: "cartao stat" }, el("span", {}, "Aproveitamento"), el("b", { style: pct != null && pct >= 60 ? "color:var(--certo)" : "" }, pct == null ? "–" : `${pct}%`)),
       el("div", { class: "cartao stat" }, el("span", {}, "Acertos · erros"),
         el("b", {}, el("em", { style: "color:var(--certo)" }, String(s.ok)), el("small", {}, " · "), el("em", { style: "color:var(--errado)" }, String(s.erro)))),
@@ -130,6 +147,28 @@ export async function iniciarApp(root, user) {
         el("div", {}, el("b", { style: "color:var(--errado)" }, String(s.erro)), el("span", {}, "erros")),
         el("div", {}, el("b", {}, pct == null ? "–" : `${pct}%`), el("span", {}, "aproveit."))),
       porArea.cloneNode(true)));
+  }
+
+  function desenharAbas() {
+    const conta = (f) => { const qs = Q.filter(f), s = placar(qs); return `${s.ok + s.erro}/${qs.length}`; };
+    const aba = (k, conteudo, filtro) => el("button", {
+      class: "aba" + (st.aba === k ? " on" : ""), "aria-pressed": String(st.aba === k),
+      on: () => { if (st.aba !== k) { guardado("apostas.aba", k); mudar(() => { st.aba = k; st.topico = null; }); } },
+    }, conteudo, el("span", { class: "aba-n" }, conta(filtro)));
+    $abas.replaceChildren(
+      aba("apostas", el("span", { class: "aba-nome" }, "Monitoria"), (q) => !rev(q)),
+      aba("revisai", el("img", { src: "/revisai/revisai.png", alt: "revisaí", class: "aba-logo" }), rev));
+    document.getElementById("c-lista")?.toggleAttribute("hidden", st.aba !== "revisai");
+    $parceria.replaceChildren(st.aba !== "revisai" ? "" : el("section", { class: "cartao parceria" },
+      el("img", { src: "/revisai/revisai.png", alt: "revisaí", class: "parceria-logo" }),
+      el("div", { class: "parceria-txt" },
+        el("span", { class: "rotulo" }, "Parceria"),
+        el("p", {}, "As 180 questões dos Simulados 1 e 2 do ", el("b", {}, "revisaí"), " para o 2º dia. A apostila completa, com teoria, fichas extras e autodiagnóstico, é gratuita e está no perfil deles."),
+        el("small", {}, "Seus acertos aqui somam com os da monitoria no desempenho geral.")),
+      el("a", { class: "botao cheio", href: REVISAI_URL, target: "_blank", rel: "noopener" }, "Ver as apostilas do revisaí")));
+    $listas.replaceChildren(...LISTAS.map(([k, r]) => el("button", {
+      class: "pilula" + (st.lista === k ? " on" : ""), on: () => mudar(() => { st.lista = k; st.topico = null; }),
+    }, r)));
   }
 
   function desenharLateral() {
@@ -145,7 +184,7 @@ export async function iniciarApp(root, user) {
     if (st.modo !== "todas") extras.push(el("button", { class: "pilula ativo", on: () => mudar(() => { st.modo = "todas"; }) }, MODOS.find((m) => m[0] === st.modo)[1], svg(ICO.x, 14)));
     $chips.replaceChildren(...extras, ...AREAS.map(botaoArea));
 
-    const base = Q.filter((q) => st.area === "Todas" || q.a === st.area);
+    const base = Q.filter((q) => naAba(q) && (st.area === "Todas" || q.a === st.area));
     const item = (rot, topico, qs) => { const s = placar(qs); return el("button", {
       class: "topico" + (st.topico === topico ? " on" : ""),
       on: () => { mudar(() => { st.topico = topico; }); fecharFolha(); },
@@ -164,10 +203,18 @@ export async function iniciarApp(root, user) {
       class: "pilula" + (st.modo === k ? " on" : ""), on: () => mudar(() => { st.modo = k; }),
     }, r)));
 
-    $grade.replaceChildren(...lista().map((q) => { const s = situacao(q); return el("button", {
-      class: "casa" + (s ? " " + s : "") + (q.n === st.atual ? " atual" : ""), title: `${q.a} · ${q.t}`,
-      on: () => { ir(q.n); fecharFolha(); },
-    }, String(q.n)); }));
+    const casas = []; let grupoAtual = null;
+    for (const q of lista()) {
+      if (st.aba === "revisai" && st.lista === "todas" && q.f !== grupoAtual) {
+        grupoAtual = q.f; casas.push(el("div", { class: "grade-grupo" }, NOME_LISTA[q.f]));
+      }
+      const s = situacao(q);
+      casas.push(el("button", {
+        class: "casa" + (s ? " " + s : "") + (q.n === st.atual ? " atual" : ""), title: `${q.a} · ${q.sub || q.t}`,
+        on: () => { ir(q.n); fecharFolha(); },
+      }, String(q.num)));
+    }
+    $grade.replaceChildren(...casas);
   }
 
   function ampliar(src, alt) {
@@ -195,8 +242,12 @@ export async function iniciarApp(root, user) {
 
     const modoNovo = separadas(q.n);
     const srcEnun = img(modoNovo ? "e" : "q", q.n);
-    const enunciado = el("img", { class: "qimg", alt: `Enunciado da questão ${q.n}`, src: srcEnun });
-    enunciado.onload = () => enunciado.classList.add("ok");
+    const k = escala(q);
+    const enunciado = el("img", { class: "qimg", alt: `Enunciado da questão ${q.num}`, src: srcEnun });
+    enunciado.onload = () => {
+      enunciado.classList.add("ok");
+      if (rev(q)) { enunciado.style.width = Math.round(enunciado.naturalWidth * k) + "px"; enunciado.style.marginLeft = "0"; }
+    };
 
     const estado = (X) => feita ? (X === q.k ? " certa" : X === feita ? " errada" : " apagada") : (st.marcada === X ? " marcada" : "");
     const marcar = (X) => { if (!feita) { st.marcada = X; desenharQuestao(); } };
@@ -205,7 +256,7 @@ export async function iniciarApp(root, user) {
       ? el("div", { class: "opcoes", role: "radiogroup", "aria-label": "Alternativas" }, ..."ABCDE".split("").map((X) => {
           const im = el("img", { alt: `Alternativa ${X}`, src: img("a", q.n, X), draggable: "false" });
           // mesma escala do enunciado (recorte a 150 dpi; o enunciado aparece a ~69% no computador)
-          im.onload = () => { im.style.width = Math.round(im.naturalWidth * 0.69) + "px"; };
+          im.onload = () => { im.style.width = Math.round(im.naturalWidth * k) + "px"; };
           return el("button", { class: "opcao" + estado(X), disabled: !!feita, role: "radio",
             "aria-checked": String(st.marcada === X || feita === X), on: () => marcar(X) },
             el("span", { class: "letra" }, X), el("span", { class: "conteudo" }, im),
@@ -227,7 +278,7 @@ export async function iniciarApp(root, user) {
       if (q.nota) corpoResposta.push(el("div", { class: "nota" }, el("b", {}, "Atenção: "), q.nota));
       const com = el("img", { class: "qimg", alt: "Comentário", loading: "lazy", src: img("c", q.n) });
       com.onload = () => com.classList.add("ok");
-      corpoResposta.push(el("details", { class: "comentario" }, el("summary", {}, "Ver comentário da apostila"),
+      corpoResposta.push(el("details", { class: "comentario" }, el("summary", {}, rev(q) ? "Ver comentário do revisaí" : "Ver comentário da apostila"),
         el("div", {}, el("button", { class: "img-botao", "aria-label": "Ampliar comentário", on: () => ampliar(img("c", q.n), "Comentário") }, com))));
     }
 
@@ -242,14 +293,16 @@ export async function iniciarApp(root, user) {
 
     const cartao = el("article", { class: "cartao questao" },
       el("header", {},
-        el("h2", {}, `Questão ${q.n}`),
+        el("h2", {}, `Questão ${q.num}`),
+        rev(q) ? el("span", { class: "etq-fonte" }, el("img", { src: "/revisai/revisai.png", alt: "revisaí" }), NOME_LISTA[q.f]) : null,
         el("span", { class: "pos" }, `${i + 1} de ${L.length}`),
         el("div", { class: "etqs" },
           el("span", { class: "etq-area", style: `background:${FUNDO[q.a]};color:${COR[q.a]}` }, el("i", { class: "ponto", style: `background:${COR[q.a]}` }), q.a),
-          el("span", { class: "etq" }, q.t))),
+          el("span", { class: "etq", title: q.sub ? q.t : null }, q.sub || q.t),
+          q.origem ? el("span", { class: "etq origem" }, q.origem) : null)),
       el("div", { class: "enunciado" },
-        el("button", { class: "img-botao", "aria-label": "Ampliar enunciado", on: () => ampliar(srcEnun, `Enunciado da questão ${q.n}`) }, enunciado),
-        el("button", { class: "ampliar", on: () => ampliar(srcEnun, `Enunciado da questão ${q.n}`) }, svg(ICO.lupa, 16), "Ampliar texto")),
+        el("button", { class: "img-botao", "aria-label": "Ampliar enunciado", on: () => ampliar(srcEnun, `Enunciado da questão ${q.num}`) }, enunciado),
+        el("button", { class: "ampliar", on: () => ampliar(srcEnun, `Enunciado da questão ${q.num}`) }, svg(ICO.lupa, 16), "Ampliar texto")),
       el("div", { class: "resposta" + (modoNovo ? " nova" : "") }, corpoResposta),
       el("p", { class: "dica so-pc" }, "Teclas A–E marcam · Enter responde · ← → trocam de questão"));
 
@@ -264,7 +317,7 @@ export async function iniciarApp(root, user) {
     }
   }
 
-  function desenhar() { desenharStats(); desenharQuestao(); desenharLateral(); }
+  function desenhar() { desenharStats(); desenharAbas(); desenharQuestao(); desenharLateral(); }
 
   function ir(n) {
     st.atual = n; st.marcada = null; desenhar();

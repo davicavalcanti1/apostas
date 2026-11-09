@@ -134,9 +134,39 @@ aside { display: flex; flex-direction: column; gap: 14px; position: sticky; top:
 @keyframes aparece { from { opacity: 0; } to { opacity: 1; } }
 .fundo-folha { display: none; }
 
+/* ---------- abas (monitoria / revisaí) e parceria ---------- */
+[hidden] { display: none !important; }
+.stat > span .soma { font-size: 11.5px; color: var(--tinta-3); font-weight: 500; }
+.abas { display: flex; gap: 8px; margin-bottom: 14px; }
+.aba { display: inline-flex; align-items: center; gap: 10px; height: 46px; padding: 0 16px; border-radius: 12px; border: 1.5px solid var(--linha-2);
+  background: var(--cartao); color: var(--tinta-2); font-weight: 700; font-size: 15px; }
+.aba:hover { border-color: var(--marinho); }
+.aba.on { border-color: var(--marinho); box-shadow: 0 0 0 1px var(--marinho); color: var(--tinta); }
+.aba-logo { height: 19px; width: auto; display: block; }
+.aba-n { font-size: 12px; font-weight: 600; color: var(--tinta-3); background: var(--papel); border-radius: 999px; padding: 2px 8px; font-variant-numeric: tabular-nums; }
+.parceria { display: flex; align-items: center; gap: 20px; padding: 16px 20px; margin-bottom: 22px; border-left: 4px solid #ff6b1a; }
+.parceria-logo { height: 34px; width: auto; flex: none; }
+.parceria-txt { flex: 1; min-width: 0; }
+.parceria-txt .rotulo { display: block; margin: 0 0 2px; color: #c94a08; }
+.parceria-txt p { margin: 0; font-size: 14.5px; color: var(--tinta-2); }
+.parceria-txt small { display: block; margin-top: 4px; font-size: 12.5px; color: var(--tinta-3); }
+.parceria .botao { flex: none; text-decoration: none; }
+.grade-grupo { grid-column: 1 / -1; font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--tinta-3); margin: 6px 2px 0; }
+.grade-grupo:first-child { margin-top: 0; }
+.etq-fonte { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--tinta-2); padding: 3px 9px 3px 8px; border-radius: 6px; background: #fff3ea; }
+.etq-fonte img { height: 12px; width: auto; display: block; }
+.etq.origem { background: none; border: 1px solid var(--linha); color: var(--tinta-3); }
+.rodape a { color: inherit; }
+
 /* ---------- celular ---------- */
 @media (max-width: 860px) {
   body { font-size: 15.5px; }
+  .abas { padding: 12px 12px 0; margin: 0; background: var(--papel); }
+  .aba { flex: 1; justify-content: center; height: 44px; padding: 0 10px; }
+  .parceria { margin: 10px 12px 0; flex-wrap: wrap; gap: 10px 14px; padding: 14px; }
+  .parceria-logo { height: 26px; }
+  .parceria-txt { flex-basis: 100%; order: 2; }
+  .parceria .botao { order: 3; width: 100%; }
   .so-cel { display: revert !important; }
   .so-pc, .topo-dir .email { display: none !important; }
   .topo-in { padding-top: 10px; padding-bottom: 10px; gap: 10px; }

@@ -13,3 +13,7 @@ O PDF e as imagens não entram no repositório (estão no `.gitignore`).
 4. `recortar_alternativas.py <pasta> <apostila.pdf>` gera `eNN.webp` (enunciado sem alternativas) e `aNNX.webp` (cada alternativa) em `<pasta>/crops2/`. Cada linha de texto e cada imagem do PDF é atribuída à letra correta (as frações e figuras ficam centralizadas no "X)", os expoentes são linhas separadas), o "X)" impresso é apagado e as bordas do cartão são removidas.
 
 Se as imagens `e`/`a` de uma questão não estiverem no bucket, o site cai sozinho no modo antigo (imagem inteira e botões A–E).
+
+## Simulados do revisaí (aba de parceria)
+
+5. `recortar_revisai.py <simulado.pdf> <base> <saida.json>` recorta os Simulados 1 (base 100, questões 101–190) e 2 (base 200, questões 201–290) em `eNNN.webp`, `aNNNX.webp` e `cNNN.webp` dentro de `./crops`. O layout é em duas colunas e cada questão cabe numa coluna; o gabarito sai da grade do "Gabarito comentado" e é conferido com a letra de cada comentário. O JSON traz número, área • assunto e origem (ENEM/OBMEP/Autoral) de cada questão.

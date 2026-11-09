@@ -1,6 +1,6 @@
 # apostas
 
-Site de treino com as 80 questões da revisão da monitoria (2º dia do ENEM: Matemática e Ciências da Natureza). A pessoa entra com e-mail e senha, resolve por área e assunto, confere o gabarito e vê o comentário. O progresso fica salvo na conta. Visual do tintim.
+Site de treino para o 2º dia do ENEM (Matemática e Ciências da Natureza) com duas abas: **Monitoria** (as 80 questões da revisão da monitoria) e **revisaí** (as 180 questões dos Simulados 1 e 2 do revisaí, em parceria, com link para as apostilas deles no @revisai.enem). O desempenho geral soma as duas. A pessoa entra com e-mail e senha, resolve por área e assunto, confere o gabarito e vê o comentário. O progresso fica salvo na conta. Visual do tintim.
 
 - **Front:** Vite + JavaScript puro (`src/`), servido por nginx.
 - **Back:** Supabase, projeto **oficina** (tabelas `bq_*` e bucket privado `banco-questoes`, ver `supabase/schema.sql`).
