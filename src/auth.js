@@ -18,6 +18,7 @@ export function traduzErro(m = "") {
 
 export function telaLogin(root, modo = "entrar", aviso = null) {
   const t = TEXTOS[modo];
+  const nome = el("input", { id: "nome", type: "text", autocomplete: "name", maxlength: "80", required: modo === "criar" });
   const email = el("input", { id: "email", type: "email", autocomplete: "email", required: true });
   const senha = el("input", { id: "senha", type: "password", minlength: "6", required: modo !== "recuperar",
     autocomplete: modo === "criar" ? "new-password" : "current-password" });
@@ -33,7 +34,7 @@ export function telaLogin(root, modo = "entrar", aviso = null) {
         if (error) throw error;
       } else if (modo === "criar") {
         const { data, error } = await sb.auth.signUp({ email: email.value.trim(), password: senha.value,
-          options: { emailRedirectTo: location.origin } });
+          options: { emailRedirectTo: location.origin, data: { nome: nome.value.trim() } } });
         if (error) throw error;
         if (!data.session) return telaLogin(root, "entrar", ["info", "Conta criada! Confirme pelo link enviado ao seu e-mail e depois entre aqui."]);
       } else {
@@ -46,6 +47,7 @@ export function telaLogin(root, modo = "entrar", aviso = null) {
     }
     botao.disabled = false;
   }},
+    modo === "criar" ? el("label", { class: "campo" }, el("span", {}, "Nome"), nome) : null,
     el("label", { class: "campo" }, el("span", {}, "E-mail"), email),
     modo !== "recuperar" ? el("label", { class: "campo" }, el("span", {}, "Senha"), senha) : null,
     botao);

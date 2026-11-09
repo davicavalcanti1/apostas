@@ -41,7 +41,7 @@ export async function iniciarApp(root, user) {
     el("header", { class: "topo" }, el("div", { class: "miolo topo-in" },
       marca(true),
       el("div", { class: "usuario" },
-        el("span", { class: "email" }, user.email),
+        el("span", { class: "email" }, user.user_metadata?.nome || user.email),
         el("button", { class: "botao-topo", on: () => sb.auth.signOut() }, "Sair")))),
     el("div", { class: "miolo pagina" },
       $stats,
