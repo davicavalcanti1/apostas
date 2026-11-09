@@ -3,7 +3,7 @@ import { el, marca } from "./dom.js";
 
 const TEXTOS = {
   entrar:   { titulo: "Entrar", sub: "Use o e-mail e a senha da sua conta.", botao: "Entrar" },
-  criar:    { titulo: "Criar conta", sub: "Crie sua senha. O acesso às questões é liberado pelo organizador.", botao: "Criar conta" },
+  criar:    { titulo: "Criar conta", sub: "Use o código de convite que veio junto com o link.", botao: "Criar conta" },
   recuperar:{ titulo: "Recuperar senha", sub: "Enviamos um link para você criar uma senha nova.", botao: "Enviar link" },
 };
 
@@ -19,6 +19,7 @@ export function traduzErro(m = "") {
 export function telaLogin(root, modo = "entrar", aviso = null) {
   const t = TEXTOS[modo];
   const nome = el("input", { id: "nome", type: "text", autocomplete: "name", maxlength: "80", required: modo === "criar" });
+  const convite = el("input", { id: "convite", type: "text", autocomplete: "off", autocapitalize: "characters", spellcheck: "false", maxlength: "40", required: modo === "criar", placeholder: "Código que veio com o link" });
   const email = el("input", { id: "email", type: "email", autocomplete: "email", required: true });
   const senha = el("input", { id: "senha", type: "password", minlength: "6", required: modo !== "recuperar",
     autocomplete: modo === "criar" ? "new-password" : "current-password" });
@@ -34,7 +35,9 @@ export function telaLogin(root, modo = "entrar", aviso = null) {
         if (error) throw error;
       } else if (modo === "criar") {
         const { data, error } = await sb.auth.signUp({ email: email.value.trim(), password: senha.value,
-          options: { emailRedirectTo: location.origin, data: { nome: nome.value.trim() } } });
+          // o código vai junto nos metadados: se a conta precisar de confirmação por e-mail,
+          // ele é resgatado automaticamente no primeiro login
+          options: { emailRedirectTo: location.origin, data: { nome: nome.value.trim(), convite: convite.value.trim().toUpperCase() } } });
         if (error) throw error;
         if (!data.session) return telaLogin(root, "entrar", ["info", "Conta criada! Confirme pelo link enviado ao seu e-mail e depois entre aqui."]);
       } else {
@@ -50,6 +53,7 @@ export function telaLogin(root, modo = "entrar", aviso = null) {
     modo === "criar" ? el("label", { class: "campo" }, el("span", {}, "Nome"), nome) : null,
     el("label", { class: "campo" }, el("span", {}, "E-mail"), email),
     modo !== "recuperar" ? el("label", { class: "campo" }, el("span", {}, "Senha"), senha) : null,
+    modo === "criar" ? el("label", { class: "campo" }, el("span", {}, "Código de convite"), convite) : null,
     botao);
 
   const link = (texto, m) => el("button", { class: "link", type: "button", on: () => telaLogin(root, m) }, texto);
@@ -71,14 +75,37 @@ export function telaLogin(root, modo = "entrar", aviso = null) {
   email.focus();
 }
 
-export function telaSemAcesso(root, user) {
+const RESPOSTA_CONVITE = {
+  invalido: "Código inválido. Confira com quem te mandou o link.",
+  bloqueado: "Muitas tentativas erradas. Fale com quem te mandou o link.",
+  sem_login: "Sua sessão expirou. Entre de novo.",
+};
+
+// Tenta liberar a conta com o código. Devolve "ok" ou o motivo da falha.
+export async function resgatarConvite(codigo) {
+  const { data, error } = await sb.rpc("bq_resgatar_convite", { codigo });
+  if (error) return error.message;
+  return data;
+}
+
+export function telaSemAcesso(root, user, aoLiberar, aviso = null) {
+  const codigo = el("input", { type: "text", autocomplete: "off", autocapitalize: "characters", spellcheck: "false", maxlength: "40", required: true, placeholder: "Código que veio com o link" });
+  const msg = el("div", {}, aviso ? el("div", { class: "aviso erro" }, aviso) : null);
+  const botao = el("button", { class: "botao cheio largo", type: "submit" }, "Liberar acesso");
   root.replaceChildren(
     el("main", { class: "tela-login" },
       el("section", { class: "cartao login-cartao centro" },
         marca(),
-        el("h2", {}, "Falta liberar seu acesso"),
-        el("p", { class: "sub" }, `Sua conta foi criada. Peça ao organizador para liberar o e-mail ${user.email} e depois recarregue a página.`),
-        el("div", { class: "acoes" },
-          el("button", { class: "botao cheio", on: () => location.reload() }, "Recarregar"),
-          el("button", { class: "botao", on: () => sb.auth.signOut() }, "Sair")))));
+        el("h2", {}, "Digite o código de convite"),
+        el("p", { class: "sub" }, `Falta só o código que veio junto com o link para liberar ${user.email}.`),
+        msg,
+        el("form", { style: "text-align:left", onsubmit: async (e) => {
+          e.preventDefault(); botao.disabled = true;
+          const r = await resgatarConvite(codigo.value);
+          if (r === "ok") return aoLiberar();
+          msg.replaceChildren(el("div", { class: "aviso erro" }, RESPOSTA_CONVITE[r] || r));
+          botao.disabled = false;
+        }}, el("label", { class: "campo" }, el("span", {}, "Código de convite"), codigo), botao),
+        el("div", { class: "login-rodape" }, el("button", { class: "link", type: "button", on: () => sb.auth.signOut() }, "Sair")))));
+  codigo.focus();
 }

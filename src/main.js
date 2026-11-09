@@ -1,6 +1,6 @@
 import "./style.css";
 import { sb } from "./supabase.js";
-import { telaLogin, telaSemAcesso, traduzErro } from "./auth.js";
+import { telaLogin, telaSemAcesso, traduzErro, resgatarConvite } from "./auth.js";
 import { iniciarApp } from "./app.js";
 import { el } from "./dom.js";
 
@@ -29,10 +29,21 @@ async function trocar(evento, sessao) {
   desmontar?.(); desmontar = null;
 
   if (!user) return telaLogin(root);
+  await abrir(user, true);
+}
+
+async function abrir(user, tentarConviteSalvo) {
   carregando("Carregando questões…");
   try {
-    const r = await iniciarApp(root, user);
-    if (r === false) telaSemAcesso(root, user);
+    let r = await iniciarApp(root, user);
+    let aviso = null;
+    if (r === false && tentarConviteSalvo && user.user_metadata?.convite) {
+      // conta criada com código: libera automaticamente no primeiro acesso
+      const res = await resgatarConvite(user.user_metadata.convite);
+      if (res === "ok") r = await iniciarApp(root, user);
+      else aviso = "O código usado no cadastro não funcionou. Digite de novo.";
+    }
+    if (r === false) telaSemAcesso(root, user, () => abrir(user, false), aviso);
     else desmontar = r;
   } catch (err) {
     root.replaceChildren(el("div", { class: "carregando" }, "Erro ao carregar: " + (err.message || err),
