@@ -16,10 +16,26 @@ export function traduzErro(m = "") {
   return m;
 }
 
-export function telaLogin(root, modo = "entrar", aviso = null) {
-  const t = TEXTOS[modo];
+// Link de convite: apostas.tintim.online/?convite=CODIGO preenche o código sozinho
+function lerConviteDoLink() {
+  const p = new URLSearchParams(location.search);
+  const c = (p.get("convite") || "").trim().toUpperCase();
+  try {
+    if (c) {
+      sessionStorage.setItem("convite", c);
+      history.replaceState(null, "", location.pathname); // tira o código da barra de endereço
+    }
+    return c || sessionStorage.getItem("convite") || "";
+  } catch { return c; }
+}
+export const conviteDoLink = lerConviteDoLink();
+
+export function telaLogin(root, modo = conviteDoLink ? "criar" : "entrar", aviso = null) {
+  const t = conviteDoLink && modo === "criar"
+    ? { ...TEXTOS.criar, sub: "Seu convite já veio no link. Só falta nome, e-mail e senha." } : TEXTOS[modo];
   const nome = el("input", { id: "nome", type: "text", autocomplete: "name", maxlength: "80", required: modo === "criar" });
   const convite = el("input", { id: "convite", type: "text", autocomplete: "off", autocapitalize: "characters", spellcheck: "false", maxlength: "40", required: modo === "criar", placeholder: "Código que veio com o link" });
+  if (conviteDoLink) convite.value = conviteDoLink;
   const email = el("input", { id: "email", type: "email", autocomplete: "email", required: true });
   const senha = el("input", { id: "senha", type: "password", minlength: "6", required: modo !== "recuperar",
     autocomplete: modo === "criar" ? "new-password" : "current-password" });
@@ -53,7 +69,7 @@ export function telaLogin(root, modo = "entrar", aviso = null) {
     modo === "criar" ? el("label", { class: "campo" }, el("span", {}, "Nome"), nome) : null,
     el("label", { class: "campo" }, el("span", {}, "E-mail"), email),
     modo !== "recuperar" ? el("label", { class: "campo" }, el("span", {}, "Senha"), senha) : null,
-    modo === "criar" ? el("label", { class: "campo" }, el("span", {}, "Código de convite"), convite) : null,
+    modo === "criar" && !conviteDoLink ? el("label", { class: "campo" }, el("span", {}, "Código de convite"), convite) : null,
     botao);
 
   const link = (texto, m) => el("button", { class: "link", type: "button", on: () => telaLogin(root, m) }, texto);
@@ -90,6 +106,7 @@ export async function resgatarConvite(codigo) {
 
 export function telaSemAcesso(root, user, aoLiberar, aviso = null) {
   const codigo = el("input", { type: "text", autocomplete: "off", autocapitalize: "characters", spellcheck: "false", maxlength: "40", required: true, placeholder: "Código que veio com o link" });
+  if (conviteDoLink) codigo.value = conviteDoLink;
   const msg = el("div", {}, aviso ? el("div", { class: "aviso erro" }, aviso) : null);
   const botao = el("button", { class: "botao cheio largo", type: "submit" }, "Liberar acesso");
   root.replaceChildren(

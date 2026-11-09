@@ -1,7 +1,7 @@
 import "./style.css";
 import "./painel.css";
 import { sb } from "./supabase.js";
-import { telaLogin, telaSemAcesso, traduzErro, resgatarConvite } from "./auth.js";
+import { telaLogin, telaSemAcesso, traduzErro, resgatarConvite, conviteDoLink } from "./auth.js";
 import { iniciarApp } from "./app.js";
 import { el } from "./dom.js";
 
@@ -38,9 +38,10 @@ async function abrir(user, tentarConviteSalvo) {
   try {
     let r = await iniciarApp(root, user);
     let aviso = null;
-    if (r === false && tentarConviteSalvo && user.user_metadata?.convite) {
-      // conta criada com código: libera automaticamente no primeiro acesso
-      const res = await resgatarConvite(user.user_metadata.convite);
+    const salvo = user.user_metadata?.convite || conviteDoLink;
+    if (r === false && tentarConviteSalvo && salvo) {
+      // conta criada com código (ou aberta pelo link de convite): libera automaticamente
+      const res = await resgatarConvite(salvo);
       if (res === "ok") r = await iniciarApp(root, user);
       else aviso = "O código usado no cadastro não funcionou. Digite de novo.";
     }
