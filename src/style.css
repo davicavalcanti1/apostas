@@ -82,3 +82,17 @@ img { max-width: 100%; }
   .login-cartao { justify-self: stretch; max-width: none; padding: 24px 20px; }
 }
 
+
+/* ---------- logo do tintim leva de volta ao menu ---------- */
+.marca-tintim { border: 0; background: none; padding: 4px; margin: -4px; border-radius: 8px; cursor: pointer; display: block; }
+.marca-tintim:hover { background: rgba(127, 140, 160, .14); }
+.volta-menu { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; animation: volta-aparece .15s ease-out; }
+.volta-fundo { position: absolute; inset: 0; background: rgba(11, 26, 51, .55); }
+.volta-cartao { position: relative; width: min(380px, 100%); background: var(--cartao); border-radius: 20px; padding: 28px 24px 22px; text-align: center;
+  box-shadow: 0 24px 60px rgba(11, 26, 51, .35); }
+.volta-icone { display: block; margin: 0 auto 14px; border-radius: 14px; }
+.volta-cartao h2 { margin: 0 0 6px; font-size: 21px; font-weight: 800; letter-spacing: -.02em; color: var(--tinta); }
+.volta-cartao p { margin: 0 0 20px; font-size: 14.5px; color: var(--tinta-2); }
+.volta-acoes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.volta-acoes .botao { justify-content: center; text-decoration: none; padding: 11px 12px; }
+@keyframes volta-aparece { from { opacity: 0; } to { opacity: 1; } }
