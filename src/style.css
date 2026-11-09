@@ -142,6 +142,31 @@ aside { display: flex; flex-direction: column; gap: 14px; position: sticky; top:
 .alt.certa { background: var(--certo); border-color: var(--certo); color: #fff; }
 .alt.errada { background: var(--errado); border-color: var(--errado); color: #fff; }
 .alt.apagada { opacity: .4; }
+/* alternativas clicáveis */
+.resposta.nova { background: var(--cartao); border-top: 0; padding-top: 4px; }
+.opcoes { display: flex; flex-direction: column; gap: 10px; }
+.opcao { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 14px; width: 100%; text-align: left;
+  padding: 10px 14px; border: 1.5px solid var(--linha-2); border-radius: 14px; background: var(--cartao); transition: border-color .12s, background .12s, box-shadow .12s; }
+.opcao:hover:not(:disabled) { border-color: var(--marinho); box-shadow: var(--sombra); }
+.opcao .letra { width: 38px; height: 38px; border-radius: 50%; border: 1.5px solid var(--linha-2); display: grid; place-items: center;
+  font-weight: 800; font-size: 15px; color: var(--tinta-2); background: #fff; transition: all .12s; }
+.opcao .conteudo { min-width: 0; display: block; }
+.opcao .conteudo img { display: block; max-width: 100%; height: auto; mix-blend-mode: multiply; }
+.opcao.marcada { border-color: var(--marinho); background: var(--petroleo-claro); }
+.opcao.marcada .letra { background: var(--marinho); border-color: var(--marinho); color: #fff; }
+.opcao.certa { border-color: var(--certo); background: var(--certo-claro); opacity: 1; }
+.opcao.certa .letra { background: var(--certo); border-color: var(--certo); color: #fff; }
+.opcao.errada { border-color: var(--errado); background: var(--errado-claro); opacity: 1; }
+.opcao.errada .letra { background: var(--errado); border-color: var(--errado); color: #fff; }
+.opcao.apagada { opacity: .5; }
+.selo-res { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.selo-res.ok { background: var(--certo); color: #fff; }
+.selo-res.erro { background: var(--errado); color: #fff; }
+@media (max-width: 640px) {
+  .opcao { grid-template-columns: 32px minmax(0, 1fr); gap: 10px; padding: 9px 10px; }
+  .opcao .letra { width: 32px; height: 32px; font-size: 14px; }
+  .selo-res { grid-column: 2; justify-self: start; }
+}
 .acoes { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
 .dica { font-size: 12.5px; color: var(--tinta-3); }
 .resultado { display: flex; align-items: center; gap: 10px; margin-top: 16px; padding: 12px 14px; border-radius: 12px; font-weight: 600; }

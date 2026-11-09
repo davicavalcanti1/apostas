@@ -20,11 +20,18 @@ export async function iniciarApp(root, user) {
   const porN = Object.fromEntries(Q.map((q) => [q.n, q]));
   let resp = Object.fromEntries((rs.data || []).map((r) => [r.n, r.resposta]));
 
-  const caminhos = Q.flatMap((q) => [`q${pad(q.n)}.webp`, `c${pad(q.n)}.webp`]);
-  const { data: assinadas, error: errImg } = await sb.storage.from(BUCKET).createSignedUrls(caminhos, 60 * 60 * 12);
-  if (errImg) throw errImg;
-  const urls = Object.fromEntries(assinadas.map((s) => [s.path, s.signedUrl]));
-  const img = (tipo, n) => urls[`${tipo}${pad(n)}.webp`];
+  // q = questão inteira (antiga), c = comentário, e = enunciado sem alternativas, aNNX = alternativa X
+  const caminhos = Q.flatMap((q) => [`q${pad(q.n)}.webp`, `c${pad(q.n)}.webp`, `e${pad(q.n)}.webp`,
+    ..."ABCDE".split("").map((L) => `a${pad(q.n)}${L}.webp`)]);
+  const urls = {};
+  for (let i = 0; i < caminhos.length; i += 200) {
+    const { data, error } = await sb.storage.from(BUCKET).createSignedUrls(caminhos.slice(i, i + 200), 60 * 60 * 12);
+    if (error) throw error;
+    data.forEach((s) => { if (s.signedUrl && !s.error) urls[s.path] = s.signedUrl; });
+  }
+  const img = (tipo, n, L = "") => urls[`${tipo}${pad(n)}${L}.webp`];
+  // alternativas clicáveis só quando todas as imagens recortadas existem; senão, volta ao modo antigo
+  const separadas = (n) => !!img("e", n) && "ABCDE".split("").every((L) => img("a", n, L));
 
   const st = { area: "Todas", topico: null, modo: "todas", atual: null, marcada: null };
 
@@ -125,16 +132,28 @@ export async function iniciarApp(root, user) {
     if (!st.atual || !L.some((q) => q.n === st.atual)) st.atual = (L.find((q) => !resp[q.n]) || L[0]).n;
     const q = porN[st.atual], i = L.findIndex((x) => x.n === q.n), feita = resp[q.n];
 
-    const enunciado = el("img", { class: "qimg", alt: `Enunciado da questão ${q.n}`, src: img("q", q.n) });
+    const modoNovo = separadas(q.n);
+    const enunciado = el("img", { class: "qimg", alt: `Enunciado da questão ${q.n}`, src: img(modoNovo ? "e" : "q", q.n) });
     enunciado.onload = () => enunciado.classList.add("ok");
 
-    const alts = el("div", { class: "alts" }, ..."ABCDE".split("").map((X) => {
-      let c = "alt";
-      if (feita) c += X === q.k ? " certa" : X === feita ? " errada" : " apagada";
-      else if (st.marcada === X) c += " marcada";
-      return el("button", { class: c, disabled: !!feita, "aria-label": `Alternativa ${X}`,
-        on: () => { if (!feita) { st.marcada = X; desenharQuestao(); } } }, X);
-    }));
+    const estado = (X) => feita ? (X === q.k ? " certa" : X === feita ? " errada" : " apagada") : (st.marcada === X ? " marcada" : "");
+    const marcar = (X) => { if (!feita) { st.marcada = X; desenharQuestao(); } };
+
+    // modo novo: cada alternativa é um botão com a letra e o recorte da alternativa
+    const alts = modoNovo
+      ? el("div", { class: "opcoes", role: "radiogroup", "aria-label": "Alternativas" }, ..."ABCDE".split("").map((X) => {
+          const im = el("img", { alt: `Alternativa ${X}`, src: img("a", q.n, X), draggable: "false" });
+          // mesma escala do enunciado (o recorte é feito a 150 dpi, o enunciado aparece a ~69%)
+          im.onload = () => { im.style.width = Math.round(im.naturalWidth * 0.69) + "px"; };
+          return el("button", { class: "opcao" + estado(X), disabled: !!feita, role: "radio",
+            "aria-checked": String(st.marcada === X || feita === X), on: () => marcar(X) },
+            el("span", { class: "letra" }, X), el("span", { class: "conteudo" }, im),
+            feita && X === q.k ? el("span", { class: "selo-res ok" }, "Correta") : null,
+            feita && X === feita && X !== q.k ? el("span", { class: "selo-res erro" }, "Sua resposta") : null);
+        }))
+      : el("div", { class: "alts" }, ..."ABCDE".split("").map((X) =>
+          el("button", { class: "alt" + estado(X), disabled: !!feita,
+            "aria-label": `Alternativa ${X}`, on: () => marcar(X) }, X)));
 
     const responder = el("button", { class: "botao cheio", disabled: !st.marcada, on: responderAtual }, "Responder");
     const partes = [alts, el("div", { class: "acoes" },
@@ -163,10 +182,14 @@ export async function iniciarApp(root, user) {
           el("span", { class: "etq" }, q.t),
           el("span", { class: "pos" }, `${i + 1} de ${L.length}`)),
         el("div", { class: "enunciado" }, enunciado),
-        el("div", { class: "resposta" }, partes)),
+        el("div", { class: "resposta" + (modoNovo ? " nova" : "") }, partes)),
       el("nav", { class: "navegar" }, ant, prox));
 
-    if (L[i + 1]) new Image().src = img("q", L[i + 1].n); // pré-carrega a próxima
+    const p = L[i + 1]?.n; // pré-carrega a próxima
+    if (p) {
+      const fontes = separadas(p) ? [img("e", p), ..."ABCDE".split("").map((X) => img("a", p, X))] : [img("q", p)];
+      fontes.forEach((src) => { new Image().src = src; });
+    }
   }
 
   function desenhar() { desenharStats(); desenharQuestao(); desenharLateral(); }
