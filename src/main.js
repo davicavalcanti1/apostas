@@ -1,4 +1,5 @@
 import "./style.css";
+import "./painel.css";
 import { sb } from "./supabase.js";
 import { telaLogin, telaSemAcesso, traduzErro, resgatarConvite } from "./auth.js";
 import { iniciarApp } from "./app.js";
