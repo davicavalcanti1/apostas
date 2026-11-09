@@ -50,7 +50,13 @@ img { max-width: 100%; }
 
 /* ---------- login ---------- */
 .tela-login { min-height: 100vh; display: grid; grid-template-columns: 1.1fr 1fr; gap: 56px; align-items: center; max-width: 1080px; margin: 0 auto; padding: 40px 24px; }
-.login-intro h1 { font-weight: 800; font-size: clamp(36px, 5.4vw, 60px); line-height: 1.03; letter-spacing: -.03em; margin: 34px 0 0; text-wrap: balance; max-width: 13ch; }
+.login-intro h1 { font-weight: 800; font-size: clamp(36px, 5.4vw, 60px); line-height: 1.03; letter-spacing: -.03em; margin: 14px 0 0; text-wrap: balance; max-width: 17ch; }
+.login-selo { display: block; width: fit-content; margin-top: 30px; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--petroleo);
+  background: var(--petroleo-claro); padding: 5px 11px; border-radius: 999px; }
+.login-pontos { list-style: none; padding: 0; margin: 22px 0 0; display: grid; gap: 10px; max-width: 46ch; }
+.login-pontos li { position: relative; padding-left: 26px; font-size: 16px; color: var(--tinta-2); }
+.login-pontos li::before { content: ""; position: absolute; left: 4px; top: .5em; width: 9px; height: 9px; border-radius: 50%; background: var(--coral); }
+.login-pontos b { color: var(--tinta); }
 .login-intro h1 em { font-style: normal; color: var(--coral-tinta); }
 .login-intro p { font-size: 18.5px; color: var(--tinta-2); max-width: 46ch; margin: 18px 0 0; }
 .login-cartao { padding: 30px 28px; width: 100%; max-width: 420px; justify-self: end; }
@@ -69,7 +75,9 @@ img { max-width: 100%; }
 .aviso.info { background: var(--petroleo-claro); color: var(--petroleo); }
 @media (max-width: 860px) {
   .tela-login { grid-template-columns: 1fr; gap: 28px; padding: 28px 16px; align-content: start; }
-  .login-intro h1 { margin-top: 26px; }
+  .login-intro h1 { margin-top: 12px; }
+  .login-selo { margin-top: 22px; }
+  .login-pontos li { font-size: 15px; }
   .login-intro p { font-size: 16.5px; }
   .login-cartao { justify-self: stretch; max-width: none; padding: 24px 20px; }
 }
