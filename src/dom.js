@@ -14,7 +14,7 @@ export function el(tag, attrs = {}, ...kids) {
   return e;
 }
 
-export const MENU_TINTIM = "https://painel.tintim.online";
+export const MENU_TINTIM = "https://tintim.online";
 
 // Pergunta antes de sair do apostas para a página inicial do tintim.
 export function confirmarVoltaMenu() {
