@@ -16,8 +16,8 @@
 .prog-txt em { font-style: normal; color: var(--marinho-muda); }
 .prog-barra .trilho { height: 3px; border-radius: 0; background: rgba(255, 255, 255, .1); }
 
-.abas-topo { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: grid; grid-template-columns: 1fr 1fr;
-  gap: 4px; padding: 4px; border-radius: 14px; background: rgba(255, 255, 255, .08); width: 320px; }
+.abas-topo { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 4px; padding: 4px; border-radius: 14px; background: rgba(255, 255, 255, .08); width: 420px; }
 .aba { display: flex; align-items: center; justify-content: center; height: 40px; padding: 0 16px; border-radius: 10px; border: 0; background: transparent;
   color: #fff; font-weight: 700; font-size: 15px; letter-spacing: -.01em; transition: background .15s; }
 .aba:hover { background: rgba(255, 255, 255, .1); }
@@ -93,6 +93,43 @@
 .card-acoes .botao-sim { width: 100%; }
 .card-treino { width: 100%; padding: 12px 16px; border-color: var(--linha-2); color: var(--tinta); }
 .card-pdf { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 0 0; color: var(--petroleo); }
+
+/* ---------- início ---------- */
+.ini-ola { margin: 4px 0 16px; }
+.ini-ola h1 { margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -.02em; }
+.ini-ola p { margin: 4px 0 0; color: var(--tinta-2); font-size: 15px; }
+.ini-ola p b { color: var(--coral-tinta); }
+.ini-continuar { padding: 22px 24px; margin-bottom: 16px; border-left: 4px solid var(--marinho); }
+.ini-continuar.destaque { border-left-color: #ff6b1a; }
+.ini-continuar .rotulo { margin-bottom: 4px; }
+.ini-continuar h2 { margin: 0 0 4px; font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+.ini-continuar p { margin: 0 0 16px; color: var(--tinta-2); font-size: 14.5px; }
+.ini-continuar .botao-sim { max-width: 340px; width: 100%; }
+.ini-acoes { display: flex; gap: 10px; flex-wrap: wrap; }
+.ini-acoes .botao svg { margin-left: 2px; }
+.ini-grade { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; align-items: start; }
+.ini-bloco { padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; }
+.ini-bloco-cab { display: flex; align-items: center; justify-content: space-between; }
+.ini-bloco-cab h3 { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--tinta-3); }
+.ini-areas { display: flex; flex-direction: column; }
+.ini-fraco { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center; width: 100%; text-align: left; border: 1px solid var(--linha);
+  background: var(--cartao); border-radius: 12px; padding: 10px 12px; }
+.ini-fraco:hover { border-color: var(--marinho); }
+.ini-fraco b { display: block; font-size: 14.5px; }
+.ini-fraco small { font-size: 12.5px; color: var(--tinta-3); }
+.ini-fraco em { font-style: normal; font-weight: 800; font-size: 16px; font-variant-numeric: tabular-nums; }
+.ini-ir { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 700; color: var(--petroleo); }
+.ini-vazio { margin: 0; color: var(--tinta-3); font-size: 14px; }
+.ini-erradas { align-self: flex-start; }
+.ini-listas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.ini-lista { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; text-align: left; border: 1px solid var(--linha); background: var(--cartao);
+  border-radius: 12px; padding: 12px 14px; }
+.ini-lista:hover { border-color: var(--marinho); }
+.ini-lista-nome { font-weight: 700; font-size: 14.5px; display: flex; flex-direction: column; }
+.ini-lista-nome small { font-weight: 500; font-size: 12px; color: var(--tinta-3); }
+.ini-lista-n { font-size: 13px; color: var(--tinta-3); font-variant-numeric: tabular-nums; }
+.ini-lista-n b { color: var(--tinta); }
+.ini-lista .trilho { grid-column: 1 / -1; height: 5px; }
 
 /* ---------- questão ---------- */
 .questao-col { min-width: 0; }
@@ -270,6 +307,13 @@ button.sim-card:hover { border-color: #ff6b1a; box-shadow: var(--sombra); }
   .rodape { display: none; }
 
   .pagina { padding: 10px 0 0; }
+  .ini-ola, .ini-continuar, .ini-grade, .ini-bloco { margin-left: 12px; margin-right: 12px; }
+  .ini-ola h1 { font-size: 25px; }
+  .ini-continuar { padding: 18px 16px; }
+  .ini-grade { grid-template-columns: 1fr; gap: 12px; margin: 0 12px 12px; }
+  .ini-grade .ini-bloco { margin: 0; }
+  .ini-listas { grid-template-columns: 1fr; }
+  .aba { padding: 0 8px; font-size: 14px; }
   .topo-in { flex-wrap: wrap; }
   .abas-topo { position: static; transform: none; order: 3; width: 100%; }
   .cards-intro { margin: 4px 12px 14px; flex-wrap: wrap; gap: 8px 12px; }

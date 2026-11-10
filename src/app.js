@@ -49,7 +49,7 @@ const ICO = {
 export async function iniciarApp(root, user) {
   const [qs, rs, adm] = await Promise.all([
     sb.from("bq_questoes").select("n,area,topico,gabarito,nota,fonte,num,subtopico,origem").order("n"),
-    sb.from("bq_respostas").select("n,resposta"),
+    sb.from("bq_respostas").select("n,resposta,respondido_em"),
     sb.rpc("bq_sou_admin"),
   ]);
   const souAdmin = adm.data === true;
@@ -61,6 +61,7 @@ export async function iniciarApp(root, user) {
   const rev = (q) => q.f !== "apostas";
   const porN = Object.fromEntries(Q.map((q) => [q.n, q]));
   let resp = Object.fromEntries((rs.data || []).map((r) => [r.n, r.resposta]));
+  const quando = Object.fromEntries((rs.data || []).map((r) => [r.n, new Date(r.respondido_em).getTime()]));
 
   // q = questão inteira (antiga), c = comentário, e = enunciado sem alternativas, aNNX = alternativa X
   const caminhos = Q.flatMap((q) => [`q${pad(q.n)}.webp`, `c${pad(q.n)}.webp`, `e${pad(q.n)}.webp`,
@@ -75,7 +76,7 @@ export async function iniciarApp(root, user) {
   // alternativas clicáveis só quando todas as imagens recortadas existem; senão, volta ao modo antigo
   const separadas = (n) => !!img("e", n) && "ABCDE".split("").every((L) => img("a", n, L));
 
-  const st = { aba: guardado("apostas.aba") === "revisai" ? "revisai" : "apostas", lista: "todas", revTela: "cards",
+  const st = { aba: "inicio", lista: "todas", revTela: "cards",
     area: "Todas", topico: null, modo: "todas", atual: null, marcada: null };
   const nome = user.user_metadata?.nome || user.email;
   const CHAVE_SIM = `apostas.simulado.${user.id}`, CHAVE_HIST = `apostas.simulados.${user.id}`;
@@ -94,6 +95,8 @@ export async function iniciarApp(root, user) {
     el("i", { style: `width:${(100 * s.ok) / (s.tot || 1)}%;background:var(--certo)` }),
     el("i", { style: `width:${(100 * s.erro) / (s.tot || 1)}%;background:var(--errado)` }));
   const emCards = () => tela === "treino" && st.aba === "revisai" && st.revTela !== "questoes";
+  const emInicio = () => tela === "treino" && st.aba === "inicio";
+  const questoesNaTela = () => tela === "treino" && !emCards() && !emInicio();
   const mudar = (fn) => { fn(); st.atual = null; st.marcada = null; desenhar(); };
   const restante = () => (sim ? sim.inicio + DURACAO - Date.now() : 0);
   const salvarSim = () => guardado(CHAVE_SIM, sim ? JSON.stringify(sim) : null);
@@ -320,12 +323,13 @@ export async function iniciarApp(root, user) {
     const aba = (k, conteudo) => el("button", {
       class: "aba" + (st.aba === k ? " on" : ""), "aria-pressed": String(st.aba === k),
       on: () => {
-        if (st.aba === k && (k === "apostas" || st.revTela === "cards")) return;
-        guardado("apostas.aba", k); fecharPainel();
+        if (st.aba === k && (k !== "revisai" || st.revTela === "cards")) return;
+        fecharPainel();
         mudar(() => { st.aba = k; st.topico = null; st.revTela = "cards"; }); window.scrollTo({ top: 0 });
       },
     }, conteudo);
     trocar($abas,
+      aba("inicio", el("span", { class: "aba-nome" }, "Início")),
       aba("apostas", el("span", { class: "aba-nome" }, "Monitoria")),
       aba("revisai", el("img", { src: st.aba === "revisai" ? "/revisai/revisai.png" : "/revisai/revisai-branco.png", alt: "revisaí", class: "aba-logo" })));
     const s = placar(Q), feitas = s.ok + s.erro, pct = feitas ? Math.round((100 * s.ok) / feitas) : null;
@@ -351,7 +355,7 @@ export async function iniciarApp(root, user) {
 
     if (st.aba === "revisai") $linhaFiltro.prepend(el("button", { class: "voltar-sim", on: () => mudar(() => { st.revTela = "cards"; }) },
       svg(ICO.esq, 16), "Simulados"));
-    $linhaFiltro.hidden = emCards();
+    $linhaFiltro.hidden = emCards() || emInicio();
     trocar($faixa);
   }
 
@@ -361,6 +365,119 @@ export async function iniciarApp(root, user) {
       .createSignedUrl(`revisai-simulado-${num}.pdf`, 600, { download: `revisai - ${num === 1 ? "Apostila e Simulado 1" : "Simulado 2"} - 2o dia.pdf` });
     if (error || !data?.signedUrl) return alert("O PDF ainda não está disponível. Tente de novo mais tarde.");
     location.href = data.signedUrl;
+  }
+
+  // abre uma lista já na questão certa
+  function irPara({ aba, lista = "todas", area = "Todas", topico = null, modo = "todas", n = null }) {
+    st.aba = aba; st.lista = lista; st.area = area; st.topico = topico; st.modo = modo; st.revTela = "questoes";
+    st.atual = n; st.marcada = null; desenhar(); window.scrollTo({ top: 0 });
+  }
+  const abaDe = (q) => (rev(q) ? "revisai" : "apostas");
+  // próxima questão sem resposta depois de `q`, na mesma lista (dá a volta no fim)
+  function proximaPendente(q) {
+    const L = Q.filter((x) => x.f === q.f), i = L.indexOf(q);
+    return [...L.slice(i + 1), ...L.slice(0, i)].find((x) => !resp[x.n]) || null;
+  }
+
+  function desenharInicio() {
+    const s = placar(Q), feitas = s.ok + s.erro, pct = feitas ? Math.round((100 * s.ok) / feitas) : null;
+    const primeiroNome = (user.user_metadata?.nome || "").trim().split(/\s+/)[0];
+    const meiaNoite = new Date(); meiaNoite.setHours(0, 0, 0, 0);
+    const dias = Math.round((new Date(2026, 10, 15) - meiaNoite) / 864e5); // dias de calendário até 15/11
+    const contagem = dias > 1 ? `Faltam ${dias} dias para o 2º dia do ENEM` : dias === 1 ? "O 2º dia do ENEM é amanhã" : dias === 0 ? "Hoje é o 2º dia do ENEM. Boa prova!" : "Boa sorte no resultado!";
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    const feitasHoje = Object.values(quando).filter((t) => t >= hoje.getTime()).length;
+
+    // onde parou: a última resposta dada
+    const ultimaN = Object.keys(quando).sort((a, b) => quando[b] - quando[a])[0];
+    const ultima = ultimaN ? porN[ultimaN] : null;
+    const prox = ultima ? proximaPendente(ultima) : null;
+    const nomeLista = (q) => (rev(q) ? `revisaí · ${NOME_LISTA[q.f]}` : "Monitoria");
+    const blocoContinuar = sim
+      ? el("section", { class: "cartao ini-continuar destaque" },
+          el("span", { class: "rotulo" }, "Simulado em andamento"),
+          el("h2", {}, `${NOME_LISTA[sim.lista]} do revisaí`),
+          el("p", {}, `${Object.keys(sim.resp).length} de 90 respondidas · restam ${horas(restante())} de prova`),
+          el("button", { class: "botao-sim", on: entrarSimulado }, svg(ICO.relogio, 18), el("span", { class: "sim-nome" }, "Continuar simulado"),
+            el("small", {}, "o cronômetro está correndo")))
+      : ultima
+      ? el("section", { class: "cartao ini-continuar" },
+          el("span", { class: "rotulo" }, "Continue de onde parou"),
+          el("h2", {}, prox ? `Questão ${prox.num} · ${nomeLista(prox)}` : `${nomeLista(ultima)} completa!`),
+          el("p", {}, `A última que você fez foi a Questão ${ultima.num} (${ultima.sub || ultima.t}), ${resp[ultima.n] === ultima.k ? "e acertou" : "e errou"}.`),
+          el("div", { class: "ini-acoes" },
+            prox ? el("button", { class: "botao cheio grande", on: () => irPara({ aba: abaDe(prox), lista: rev(prox) ? prox.f : "todas", n: prox.n }) }, "Continuar", svg(ICO.dir, 18))
+              : el("button", { class: "botao cheio grande", on: () => irPara({ aba: abaDe(ultima), lista: rev(ultima) ? ultima.f : "todas", modo: "erradas" }) }, "Revisar as erradas"),
+            el("button", { class: "botao grande", on: () => irPara({ aba: abaDe(ultima), lista: rev(ultima) ? ultima.f : "todas", n: ultima.n }) }, "Ver a última")))
+      : el("section", { class: "cartao ini-continuar" },
+          el("span", { class: "rotulo" }, "Comece por aqui"),
+          el("h2", {}, "Escolha uma lista para começar"),
+          el("p", {}, "As 80 questões da monitoria são uma boa revisão geral. Os simulados do revisaí são para treinar no ritmo da prova."),
+          el("div", { class: "ini-acoes" },
+            el("button", { class: "botao cheio grande", on: () => irPara({ aba: "apostas" }) }, "Começar pela monitoria"),
+            el("button", { class: "botao grande", on: () => { st.aba = "revisai"; st.revTela = "cards"; desenhar(); } }, "Ver os simulados")));
+
+    // pontos fracos: assuntos com 3+ respondidas e menor acerto
+    const topicos = [...new Set(Q.map((q) => `${q.a}|${q.t}`))].map((k) => {
+      const [a, t] = k.split("|"), qs = Q.filter((q) => q.a === a && q.t === t), p = placar(qs);
+      return { a, t, qs, ...p, feitas: p.ok + p.erro, pct: p.ok + p.erro ? Math.round((100 * p.ok) / (p.ok + p.erro)) : null };
+    });
+    const fracos = topicos.filter((x) => x.feitas >= 3 && x.pct < 70).sort((x, y) => x.pct - y.pct).slice(0, 3);
+    const treinarAssunto = (x) => {
+      const pend = x.qs.filter((q) => !resp[q.n]), alvo = pend.find((q) => !rev(q)) || pend[0] || x.qs[0];
+      irPara({ aba: abaDe(alvo), area: x.a, topico: x.t, n: alvo.n });
+    };
+
+    const lista = (rot, filtro, acao, sub) => { const qs = Q.filter(filtro), p = placar(qs), f = p.ok + p.erro;
+      return el("button", { class: "ini-lista", on: acao },
+        el("span", { class: "ini-lista-nome" }, rot, sub ? el("small", {}, sub) : null),
+        el("span", { class: "ini-lista-n" }, el("b", {}, `${f}/${qs.length}`), f ? ` · ${Math.round((100 * p.ok) / f)}%` : ""),
+        barra(p)); };
+    const hist = lerJSON(CHAVE_HIST, []);
+    const ultimoSim = (l) => { const h = [...hist].reverse().find((x) => x.lista === l); return h ? `último simulado: ${h.acertos}/90` : "simulado ainda não feito"; };
+
+    trocar($main,
+      el("section", { class: "ini-ola" },
+        el("h1", {}, primeiroNome ? `Oi, ${primeiroNome}!` : "Bem-vindo!"),
+        el("p", {}, el("b", {}, contagem), feitasHoje ? ` · ${feitasHoje} questões feitas hoje` : " · bora começar o dia?")),
+      blocoContinuar,
+      el("div", { class: "ini-grade" },
+        el("section", { class: "cartao ini-bloco" },
+          el("div", { class: "ini-bloco-cab" }, el("h3", {}, "Seu desempenho"),
+            el("button", { class: "link", on: () => abrirPainel("desempenho") }, "Ver tudo")),
+          el("div", { class: "nums" },
+            el("div", {}, el("b", {}, String(feitas)), el("span", {}, `de ${s.tot}`)),
+            el("div", {}, el("b", { style: pct != null && pct >= 60 ? "color:var(--certo)" : "" }, pct == null ? "–" : `${pct}%`), el("span", {}, "acerto")),
+            el("div", {}, el("b", { style: "color:var(--certo)" }, String(s.ok)), el("span", {}, "acertos")),
+            el("div", {}, el("b", { style: "color:var(--errado)" }, String(s.erro)), el("span", {}, "erros"))),
+          el("div", { class: "ini-areas" }, ["Matemática", "Física", "Química", "Biologia"].map((a) => {
+            const p = placar(Q.filter((q) => q.a === a)), f = p.ok + p.erro;
+            return el("button", { class: "linha-desemp", on: () => irPara({ aba: st.aba === "revisai" ? "revisai" : "apostas", area: a }) },
+              el("span", {}, el("i", { class: "ponto", style: `background:${COR[a]}` }), " ", a),
+              el("span", { class: "n" }, f ? `${Math.round((100 * p.ok) / f)}% · ${f}/${p.tot}` : `0/${p.tot}`), barra(p));
+          }))),
+        el("section", { class: "cartao ini-bloco" },
+          el("div", { class: "ini-bloco-cab" }, el("h3", {}, "Para revisar")),
+          fracos.length
+            ? fracos.map((x) => el("button", { class: "ini-fraco", on: () => treinarAssunto(x) },
+                el("span", {}, el("b", {}, x.t), el("small", {}, `${x.a} · ${x.ok} de ${x.feitas} certas`)),
+                el("em", { style: `color:${x.pct < 50 ? "var(--errado)" : "var(--aviso)"}` }, `${x.pct}%`),
+                el("span", { class: "ini-ir" }, "Treinar", svg(ICO.dir, 14))))
+            : el("p", { class: "ini-vazio" }, feitas < 10 ? "Responda mais algumas questões e aqui aparecem os assuntos em que você mais erra." : "Nenhum assunto abaixo de 70%. Continue assim!"),
+          (() => { // refazer erradas: vai para a lista onde há mais erros
+            const erros = (f) => Q.filter((q) => f(q) && situacao(q) === "erro").length;
+            const em = erros((q) => !rev(q)), er = erros(rev);
+            if (!em && !er) return null;
+            return em >= er
+              ? el("button", { class: "botao pequeno ini-erradas", on: () => irPara({ aba: "apostas", modo: "erradas" }) }, `Refazer as ${em} erradas da monitoria`)
+              : el("button", { class: "botao pequeno ini-erradas", on: () => irPara({ aba: "revisai", modo: "erradas" }) }, `Refazer as ${er} erradas do revisaí`);
+          })())),
+      el("section", { class: "cartao ini-bloco" },
+        el("div", { class: "ini-bloco-cab" }, el("h3", {}, "Listas")),
+        el("div", { class: "ini-listas" },
+          lista("Monitoria", (q) => !rev(q), () => irPara({ aba: "apostas" }), "80 questões de revisão"),
+          lista("revisaí · Simulado 1", (q) => q.f === "revisai-1", () => irPara({ aba: "revisai", lista: "revisai-1" }), ultimoSim("revisai-1")),
+          lista("revisaí · Simulado 2", (q) => q.f === "revisai-2", () => irPara({ aba: "revisai", lista: "revisai-2" }), ultimoSim("revisai-2")))));
   }
 
   function desenharCards() {
@@ -399,6 +516,7 @@ export async function iniciarApp(root, user) {
   }
 
   function desenharQuestao() {
+    if (emInicio()) return desenharInicio();
     if (emCards()) return desenharCards();
     const L = lista();
     if (!L.length) {
@@ -464,13 +582,13 @@ export async function iniciarApp(root, user) {
   async function responderAtual() {
     if (!st.marcada || resp[st.atual]) return;
     const n = st.atual, r = st.marcada;
-    resp[n] = r; st.marcada = null; st.rolarResultado = true; desenhar();
+    resp[n] = r; quando[n] = Date.now(); st.marcada = null; st.rolarResultado = true; desenhar();
     const { error } = await sb.from("bq_respostas").upsert({ user_id: user.id, n, resposta: r });
     if (error) { delete resp[n]; desenhar(); alert("Não consegui salvar sua resposta: " + error.message); }
   }
   async function apagar(ns) {
     if (!ns.length) return;
-    const antes = { ...resp }; ns.forEach((n) => delete resp[n]); st.atual = null; st.marcada = null; desenhar();
+    const antes = { ...resp }; ns.forEach((n) => { delete resp[n]; delete quando[n]; }); st.atual = null; st.marcada = null; desenhar();
     const { error } = await sb.from("bq_respostas").delete().in("n", ns);
     if (error) { resp = antes; desenhar(); alert("Erro: " + error.message); }
   }
@@ -575,7 +693,7 @@ export async function iniciarApp(root, user) {
     const feito = sim; sim = null; salvarSim();
     const tempo = Math.min(DURACAO, Date.now() - feito.inicio);
     const linhas = Object.entries(feito.resp).map(([n, r]) => ({ user_id: user.id, n: Number(n), resposta: r }));
-    Object.assign(resp, feito.resp);
+    Object.assign(resp, feito.resp); Object.keys(feito.resp).forEach((n) => { quando[n] = Date.now(); });
     let erroSalvar = null;
     if (linhas.length) { const { error } = await sb.from("bq_respostas").upsert(linhas); erroSalvar = error; }
     const acertos = L.filter((q) => feito.resp[q.n] === q.k).length;
@@ -621,7 +739,7 @@ export async function iniciarApp(root, user) {
     if (e.key === "Escape") return fecharPainel();
     if (painelAberto) return;
     const k = e.key.toUpperCase();
-    if (tela === "treino" && !emCards()) {
+    if (questoesNaTela()) {
       if (k.length === 1 && "ABCDE".includes(k) && !resp[st.atual]) { st.marcada = k; desenharQuestao(); }
       else if (e.key === "Enter") { if (resp[st.atual]) vizinha(1); else responderAtual(); }
       else if (e.key === "ArrowRight") vizinha(1);
@@ -643,7 +761,7 @@ export async function iniciarApp(root, user) {
     const dx = e.changedTouches[0].clientX - toque.x, dy = e.changedTouches[0].clientY - toque.y;
     if (Math.abs(dx) > 70 && Math.abs(dy) < 45 && Date.now() - toque.t < 600) {
       const passo = dx < 0 ? 1 : -1;
-      if (tela === "treino" && !emCards()) vizinha(passo);
+      if (questoesNaTela()) vizinha(passo);
       else if (tela === "simulado" && sim) { const L = simQs(), i = L.findIndex((q) => q.n === sim.atual); if (L[i + passo]) irSim(L[i + passo].n); }
     }
     toque = null;
